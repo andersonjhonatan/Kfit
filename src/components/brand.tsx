@@ -1,8 +1,12 @@
-import { LOGO_BODY, LOGO_VIEWBOX, SYMBOL_BODY, SYMBOL_VIEWBOX } from '@/lib/brand-svg';
+import { LOGO_BODY, LOGO_LIGHT_BODY, LOGO_VIEWBOX, SYMBOL_BODY, SYMBOL_VIEWBOX } from '@/lib/brand-svg';
 
+/** Logo KFit: versão clara ou escura conforme o tema (o "Fit" troca de prata para grafite) */
 export function Logo({ className = 'h-9 w-auto' }: { className?: string }) {
   return (
-    <svg viewBox={LOGO_VIEWBOX} className={className} role="img" aria-label="KFit" dangerouslySetInnerHTML={{ __html: LOGO_BODY }} />
+    <>
+      <svg viewBox={LOGO_VIEWBOX} className={`only-dark ${className}`} role="img" aria-label="KFit" dangerouslySetInnerHTML={{ __html: LOGO_BODY }} />
+      <svg viewBox={LOGO_VIEWBOX} className={`only-light ${className}`} role="img" aria-label="KFit" dangerouslySetInnerHTML={{ __html: LOGO_LIGHT_BODY }} />
+    </>
   );
 }
 

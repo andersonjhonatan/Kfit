@@ -13,7 +13,7 @@ function Heartbeat() {
   const d = 'M0 30 H70 L80 30 L88 8 L98 52 L108 18 L116 30 H190 L198 30 L206 4 L216 56 L226 22 L234 30 H320';
   return (
     <svg viewBox="0 0 320 60" className="h-10 w-full max-w-[420px]" aria-hidden="true">
-      <path d={d} fill="none" stroke="rgb(255 255 255 / 0.06)" strokeWidth="3" />
+      <path d={d} fill="none" stroke="var(--line)" strokeWidth="3" />
       <motion.path
         d={d}
         fill="none"
@@ -41,7 +41,7 @@ function RestTimer() {
     <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink-3/90 px-3.5 py-2.5 backdrop-blur">
       <div className="relative h-10 w-10">
         <svg viewBox="0 0 40 40" className="h-10 w-10 -rotate-90">
-          <circle cx="20" cy="20" r="16" fill="none" stroke="rgb(255 255 255 / 0.08)" strokeWidth="4" />
+          <circle cx="20" cy="20" r="16" fill="none" stroke="var(--line)" strokeWidth="4" />
           <motion.circle
             cx="20" cy="20" r="16" fill="none" stroke="#3B82F6" strokeWidth="4" strokeLinecap="round"
             strokeDasharray="100.5"
@@ -111,7 +111,7 @@ export function Hero() {
               <a href={whatsappLink('Olá! Quero testar o KFit no meu studio.')} className="btn-lift inline-flex h-14 items-center gap-2 rounded-2xl px-6 text-base font-semibold text-white">
                 Testar {SITE.trialDays} dias grátis <ArrowRight className="h-5 w-5" />
               </a>
-              <a href="#como-funciona" className="inline-flex h-14 items-center gap-2 rounded-2xl border border-line bg-white/[0.03] px-5 text-base font-semibold text-chalk hover:bg-white/[0.06]">
+              <a href="#como-funciona" className="inline-flex h-14 items-center gap-2 rounded-2xl border border-line bg-chalk/[0.04] px-5 text-base font-semibold text-chalk hover:bg-chalk/[0.08]">
                 <Play className="h-4 w-4 fill-current" /> Ver como funciona
               </a>
             </RevealItem>
@@ -140,7 +140,7 @@ export function Hero() {
             <RestTimer />
           </motion.div>
           <motion.div
-            className="absolute -right-8 bottom-28 flex items-center gap-2 rounded-2xl bg-pr px-3.5 py-2.5 text-sm font-bold text-ink shadow-xl"
+            className="absolute -right-8 bottom-28 flex items-center gap-2 rounded-2xl bg-pr px-3.5 py-2.5 text-sm font-bold text-[#0b0b0c] shadow-xl"
             initial={{ scale: 0, rotate: -12 }}
             animate={ready ? { scale: 1, rotate: -6 } : {}}
             transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 1.4 }}

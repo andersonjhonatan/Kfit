@@ -156,5 +156,3 @@ export function Intro() {
   );
 }
 
-/** Roda antes de pintar: decide se a abertura toca (1ª visita, sem reduzir movimento) */
-export const INTRO_BOOT = `(function(){try{var d=document.documentElement;var r=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;d.setAttribute('data-intro',(!r&&!sessionStorage.getItem('${KEY}'))?'pending':'done')}catch(e){document.documentElement.setAttribute('data-intro','done')}})();`;

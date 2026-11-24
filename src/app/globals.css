@@ -1,35 +1,105 @@
 @import 'tailwindcss';
 
-@theme {
-  --color-ink: #0b0b0c;
-  --color-ink-2: #111114;
-  --color-ink-3: #17171b;
-  --color-card: #141418;
-  --color-line: rgb(255 255 255 / 0.08);
-  --color-chalk: #f5f5f7;
-  --color-mute: #a1a1aa;
-  --color-dim: #71717a;
+/* Cores por tema: o escuro é o padrão; [data-theme='light'] troca tudo.
+   Qualquer bloco com data-theme="dark" (ex.: o celular) fica escuro mesmo no tema claro. */
+:root,
+[data-theme='dark'] {
+  --ink: #0b0b0c;
+  --ink-2: #111114;
+  --ink-3: #18181c;
+  --card: #141418;
+  --line: rgb(255 255 255 / 0.1);
+  --chalk: #f5f5f7;
+  --mute: #b4b4bd;
+  --dim: #8b8b96;
+  --ice: #93c5fd;
+  --pr: #6ee7b7;
+  --low: #fca5a5;
+  --dots: rgb(255 255 255 / 0.05);
+  --stroke: rgb(255 255 255 / 0.09);
+  --chalk-a: rgb(255 255 255 / 0.95);
+  --chalk-b: rgb(255 255 255 / 0.6);
+  --glow: rgb(37 99 235 / 0.18);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --ink: #f6f7fa;
+    --ink-2: #eef1f6;
+    --ink-3: #e6eaf1;
+    --card: #ffffff;
+    --line: rgb(15 23 42 / 0.1);
+    --chalk: #0b0b0c;
+    --mute: #475063;
+    --dim: #6b7280;
+    --ice: #1d4ed8;
+    --pr: #047857;
+    --low: #b91c1c;
+    --dots: rgb(15 23 42 / 0.06);
+    --stroke: rgb(15 23 42 / 0.08);
+    --chalk-a: rgb(11 11 12 / 0.95);
+    --chalk-b: rgb(71 80 99 / 0.85);
+    --glow: rgb(37 99 235 / 0.12);
+    color-scheme: light;
+  }
+}
+[data-theme='light'] {
+  --ink: #f6f7fa;
+  --ink-2: #eef1f6;
+  --ink-3: #e6eaf1;
+  --card: #ffffff;
+  --line: rgb(15 23 42 / 0.1);
+  --chalk: #0b0b0c;
+  --mute: #475063;
+  --dim: #6b7280;
+  --ice: #1d4ed8;
+  --pr: #047857;
+  --low: #b91c1c;
+  --dots: rgb(15 23 42 / 0.06);
+  --stroke: rgb(15 23 42 / 0.08);
+  --chalk-a: rgb(11 11 12 / 0.95);
+  --chalk-b: rgb(71 80 99 / 0.85);
+  --glow: rgb(37 99 235 / 0.12);
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-chalk: var(--chalk);
+  --color-mute: var(--mute);
+  --color-dim: var(--dim);
+  --color-ice: var(--ice);
+  --color-pr: var(--pr);
+  --color-low: var(--low);
   --color-silver: #c9ced6;
   --color-blue: #2563eb;
   --color-blue-2: #3b82f6;
   --color-blue-3: #1d4ed8;
-  --color-ice: #93c5fd;
-  --color-pr: #6ee7b7;
   --color-warn: #fcd34d;
-  --color-low: #fca5a5;
   --font-display: var(--font-exo), 'Exo 2', system-ui, sans-serif;
   --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
-  background: var(--color-ink);
-  color: var(--color-chalk);
+  background: var(--ink);
+  color: var(--chalk);
 }
-body {
+html body {
+  background: var(--ink);
+  color: var(--chalk);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+/* o tema também vale dentro de blocos com data-theme próprio (ex.: o celular) */
+[data-theme] {
+  color: var(--chalk);
 }
 
 /* Título de academia: Exo 2 Black Italic em caixa alta */
@@ -45,18 +115,18 @@ body {
 /* Texto vazado (contorno) para os letreiros gigantes */
 .outline-text {
   color: transparent;
-  -webkit-text-stroke: 1.5px rgb(255 255 255 / 0.09);
+  -webkit-text-stroke: 1.5px var(--stroke);
 }
 
 /* Piso de borracha da academia: pontinhos sutis */
 .gym-floor {
-  background-image: radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1.2px);
+  background-image: radial-gradient(var(--dots) 1px, transparent 1.2px);
   background-size: 14px 14px;
 }
 
 /* Marcação de giz */
 .chalk {
-  background-image: linear-gradient(90deg, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.55));
+  background-image: linear-gradient(90deg, var(--chalk-a), var(--chalk-b));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -116,4 +186,15 @@ body {
 /* Enquanto a abertura toca, trava a rolagem */
 html[data-intro='playing'] body {
   overflow: hidden;
+}
+
+/* Peças que só aparecem em um dos temas */
+.only-light {
+  display: none !important;
+}
+[data-theme='light'] .only-light {
+  display: revert !important;
+}
+[data-theme='light'] .only-dark {
+  display: none !important;
 }

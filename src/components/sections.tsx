@@ -28,7 +28,7 @@ export function Marquee() {
     <div className="flex w-max items-center">
       {[...items, ...items].map((t, i) => (
         <span key={i} className="flex items-center gap-6 pr-6">
-          <span className={`display whitespace-nowrap text-2xl sm:text-4xl ${dark ? 'text-ink' : 'text-chalk'}`}>{t}</span>
+          <span className={`display whitespace-nowrap text-2xl sm:text-4xl ${dark ? 'text-[#0b0b0c]' : 'text-chalk'}`}>{t}</span>
           <Dumbbell className="h-4 w-9 flex-none" color={dark ? '#0b0b0c' : '#3B82F6'} />
         </span>
       ))}
@@ -74,7 +74,7 @@ export function HowItWorks() {
           </RevealItem>
         </Reveal>
         <div ref={ref} className="relative mt-14 grid gap-5 md:grid-cols-3">
-          <div className="absolute left-0 right-0 top-[38px] hidden h-1.5 overflow-hidden rounded-full bg-white/5 md:block">
+          <div className="absolute left-0 right-0 top-[38px] hidden h-1.5 overflow-hidden rounded-full bg-chalk/10 md:block">
             <motion.div style={{ scaleX: fill }} className="h-full origin-left rounded-full bg-gradient-to-r from-blue-3 via-blue to-ice" />
           </div>
           {STEPS.map((s, i) => (
@@ -103,7 +103,7 @@ export function Simulator() {
   const META = 60;
   const [kg, setKg] = useState(50);
   const kind = kg > META ? 'above' : kg === META ? 'ok' : 'below';
-  const palette = { above: ['#6EE7B7', 'Acima da meta', `Pegou ${kg} kg. O KFit sugere subir a meta para ${kg} kg.`], ok: ['#93C5FD', 'Na meta', 'Fez exatamente o que você pediu.'], below: ['#FCA5A5', 'Abaixo da meta', `Caiu para ${kg} kg. Talvez baixar a meta ou corrigir a execução.`] } as const;
+  const palette = { above: ['var(--pr)', 'Acima da meta', `Pegou ${kg} kg. O KFit sugere subir a meta para ${kg} kg.`], ok: ['var(--ice)', 'Na meta', 'Fez exatamente o que você pediu.'], below: ['var(--low)', 'Abaixo da meta', `Caiu para ${kg} kg. Talvez baixar a meta ou corrigir a execução.`] } as const;
   const [color, label, text] = palette[kind];
   // anilhas por lado: 20 kg da barra, o resto dividido em anilhas de 10, 5 e 2,5
   const side = (kg - 20) / 2;
@@ -162,7 +162,7 @@ export function Simulator() {
             </label>
             <div className="mt-2 flex justify-between text-xs text-dim"><span>20 kg</span><span>100 kg</span></div>
             <motion.div key={kind} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}
-              className="mt-6 rounded-2xl border p-4" style={{ borderColor: `${color}66`, background: `${color}14` }}>
+              className="mt-6 rounded-2xl border p-4" style={{ borderColor: `color-mix(in srgb, ${color} 45%, transparent)`, background: `color-mix(in srgb, ${color} 9%, transparent)` }}>
               <span className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color }}>{label}</span>
               <p className="mt-1 font-semibold" style={{ color }}>{text}</p>
               <p className="mt-1 text-xs text-mute">É isso que aparece para o personal no painel e no aviso do dia.</p>
@@ -269,7 +269,7 @@ export function Evolution() {
                 <span className="font-semibold">{r.k}</span>
                 <span className="text-sm text-dim">{String(r.from).replace('.', ',')}{r.unit} → <CountUp to={r.to} decimals={r.to % 1 ? 1 : 0} suffix={r.unit} className="display text-2xl normal-case text-chalk" /></span>
               </div>
-              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/5">
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-chalk/10">
                 <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: r.pct }} viewport={{ once: true }} transition={{ duration: 1.4, ease: EASE }}
                   className="h-full origin-left rounded-full" style={{ background: r.up ? 'linear-gradient(90deg,#059669,#6EE7B7)' : 'linear-gradient(90deg,#1D4ED8,#60A5FA)' }} />
               </div>
@@ -310,7 +310,7 @@ export function YourBrand() {
             {DEMO_BRANDS.map((x, k) => (
               <button key={x.id} type="button" onClick={() => { setI(k); setAuto(false); }}
                 className="flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition-colors"
-                style={{ borderColor: k === i ? x.color : 'rgb(255 255 255 / 0.08)', background: k === i ? `${x.color}1f` : 'transparent' }}>
+                style={{ borderColor: k === i ? x.color : 'var(--line)', background: k === i ? `${x.color}1f` : 'transparent' }}>
                 <BrandBadge mono={x.mono} color={x.color} shape={x.shape} size={28} /> {x.name}
               </button>
             ))}
@@ -373,7 +373,7 @@ export function BeforeAfter() {
         </div>
         <div className="mt-6 flex justify-center gap-2">
           {SWAPS.map((_, k) => (
-            <button key={k} type="button" aria-label={`Mostrar ${k + 1}`} onClick={() => setI(k)} className="h-2 rounded-full transition-all" style={{ width: k === i ? 28 : 8, background: k === i ? '#3B82F6' : 'rgb(255 255 255 / 0.15)' }} />
+            <button key={k} type="button" aria-label={`Mostrar ${k + 1}`} onClick={() => setI(k)} className="h-2 rounded-full transition-all" style={{ width: k === i ? 28 : 8, background: k === i ? '#3B82F6' : 'var(--line)' }} />
           ))}
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Check } from 'lucide-react';
 /** Moldura de celular */
 export function PhoneFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`relative w-[290px] rounded-[46px] bg-[#1b1b20] p-[10px] shadow-[0_40px_90px_-20px_rgb(0_0_0/0.8),0_0_0_1px_rgb(255_255_255/0.06)] ${className}`}>
+    <div data-theme="dark" className={`relative w-[290px] rounded-[46px] bg-[#1b1b20] p-[10px] shadow-[0_40px_90px_-20px_rgb(0_0_0/0.8),0_0_0_1px_rgb(255_255_255/0.06)] ${className}`}>
       <div className="relative h-[580px] overflow-hidden rounded-[38px] bg-ink">
         <div className="absolute left-1/2 top-2.5 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black" />
         {children}
