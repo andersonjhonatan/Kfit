@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #0b0b0c;
+  --color-ink-2: #111114;
+  --color-ink-3: #17171b;
+  --color-card: #141418;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-chalk: #f5f5f7;
+  --color-mute: #a1a1aa;
+  --color-dim: #71717a;
+  --color-silver: #c9ced6;
+  --color-blue: #2563eb;
+  --color-blue-2: #3b82f6;
+  --color-blue-3: #1d4ed8;
+  --color-ice: #93c5fd;
+  --color-pr: #6ee7b7;
+  --color-warn: #fcd34d;
+  --color-low: #fca5a5;
+  --font-display: var(--font-exo), 'Exo 2', system-ui, sans-serif;
+  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-ink);
+  color: var(--color-chalk);
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Título de academia: Exo 2 Black Italic em caixa alta */
+.display {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+/* Texto vazado (contorno) para os letreiros gigantes */
+.outline-text {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgb(255 255 255 / 0.09);
+}
+
+/* Piso de borracha da academia: pontinhos sutis */
+.gym-floor {
+  background-image: radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+}
+
+/* Marcação de giz */
+.chalk {
+  background-image: linear-gradient(90deg, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.55));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-lift {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(180deg, #3b82f6, #2563eb 55%, #1d4ed8);
+  box-shadow: 0 10px 30px -8px rgb(37 99 235 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+.btn-lift::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: -1;
+}
+.btn-lift:hover::after {
+  transform: translateX(120%);
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-rev {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.marquee {
+  animation: marquee 38s linear infinite;
+}
+.marquee-rev {
+  animation: marquee-rev 46s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .marquee,
+  .marquee-rev {
+    animation: none;
+  }
+}
+
+/* Enquanto a abertura toca, trava a rolagem */
+html[data-intro='playing'] body {
+  overflow: hidden;
+}
