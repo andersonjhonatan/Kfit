@@ -92,7 +92,7 @@ export function Hero() {
           </Reveal>
           <SlamWords
             trigger="intro"
-            className="display mt-5 text-[17vw] sm:text-7xl lg:text-[5.6rem]"
+            className="display mt-5 text-[13vw] sm:text-6xl lg:text-[4.3rem]"
             words={[
               { text: 'Treine.' },
               { text: 'Gerencie.', className: 'chalk' },
@@ -116,9 +116,9 @@ export function Hero() {
               </a>
             </RevealItem>
             <RevealItem className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-mute">
-              <span><b className="display text-2xl normal-case text-chalk">173</b> exercícios com vídeo</span>
-              <span><b className="display text-2xl normal-case text-chalk">11</b> medidas na avaliação</span>
-              <span><b className="display text-2xl normal-case text-chalk">0</b> papel</span>
+              <span><b className="display text-xl normal-case text-chalk">173</b> exercícios com vídeo</span>
+              <span><b className="display text-xl normal-case text-chalk">11</b> medidas na avaliação</span>
+              <span><b className="display text-xl normal-case text-chalk">0</b> papel</span>
             </RevealItem>
           </Reveal>
         </div>

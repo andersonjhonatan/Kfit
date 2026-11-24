@@ -28,7 +28,7 @@ export function Marquee() {
     <div className="flex w-max items-center">
       {[...items, ...items].map((t, i) => (
         <span key={i} className="flex items-center gap-6 pr-6">
-          <span className={`display whitespace-nowrap text-2xl sm:text-4xl ${dark ? 'text-[#0b0b0c]' : 'text-chalk'}`}>{t}</span>
+          <span className={`display whitespace-nowrap text-lg sm:text-2xl ${dark ? 'text-[#0b0b0c]' : 'text-chalk'}`}>{t}</span>
           <Dumbbell className="h-4 w-9 flex-none" color={dark ? '#0b0b0c' : '#3B82F6'} />
         </span>
       ))}
@@ -66,10 +66,10 @@ export function HowItWorks() {
         <Reveal className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <RevealItem>
             <Eyebrow>Como funciona</Eyebrow>
-            <h2 className="display mt-4 text-5xl sm:text-7xl">Um treino<br />em <span className="text-blue-2">3 séries</span></h2>
+            <h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl lg:text-[3.4rem]">Um treino<br />em <span className="text-blue-2">3 séries</span></h2>
           </RevealItem>
           <RevealItem className="flex items-center gap-4 rounded-2xl border border-line bg-card px-5 py-4">
-            <span className="display text-5xl normal-case text-blue-2 tabular-nums">{String(rep).padStart(2, '0')}</span>
+            <span className="display text-4xl normal-case text-blue-2 tabular-nums">{String(rep).padStart(2, '0')}</span>
             <span className="text-sm leading-tight text-mute">repetições<br />enquanto você rola</span>
           </RevealItem>
         </Reveal>
@@ -87,7 +87,7 @@ export function HowItWorks() {
                   <s.icon className="h-7 w-7 text-ice" />
                 </div>
                 <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-dim">Série {s.set}</p>
-                <h3 className="display mt-1 text-3xl">{s.t}</h3>
+                <h3 className="display mt-1 text-2xl">{s.t}</h3>
                 <p className="mt-3 leading-relaxed text-mute">{s.d}</p>
               </RevealItem>
             </Reveal>
@@ -135,7 +135,7 @@ export function Simulator() {
         <Reveal>
           <RevealItem><Eyebrow>Teste aqui</Eyebrow></RevealItem>
           <RevealItem>
-            <h2 className="display mt-4 text-5xl sm:text-6xl">Você põe a meta.<br /><span className="text-blue-2">Ele mostra o que pegou.</span></h2>
+            <h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl">Você põe a meta.<br /><span className="text-blue-2">Ele mostra o que pegou.</span></h2>
           </RevealItem>
           <RevealItem>
             <p className="mt-5 max-w-lg leading-relaxed text-mute">
@@ -147,7 +147,7 @@ export function Simulator() {
           <RevealItem className="rounded-3xl border border-line bg-card p-6 sm:p-8">
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-mute">Agachamento livre · meta {META} kg</span>
-              <span className="display text-5xl normal-case tabular-nums">{kg}<span className="text-xl text-dim"> kg</span></span>
+              <span className="display text-4xl normal-case tabular-nums">{kg}<span className="text-xl text-dim"> kg</span></span>
             </div>
             <div className="my-8 flex h-32 items-center justify-center">
               <Side />
@@ -189,7 +189,7 @@ const FEATURES = [
 function TvTimer() {
   const [s, setS] = useState(720);
   useEffect(() => { const id = window.setInterval(() => setS((v) => (v <= 0 ? 720 : v - 1)), 1000); return () => clearInterval(id); }, []);
-  return <span className="display text-5xl normal-case tabular-nums text-chalk">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>;
+  return <span className="display text-4xl normal-case tabular-nums text-chalk">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>;
 }
 
 export function Features() {
@@ -199,7 +199,7 @@ export function Features() {
         <Reveal>
           <RevealItem><Eyebrow>Recursos</Eyebrow></RevealItem>
           <RevealItem>
-            <h2 className="display mt-4 max-w-3xl text-5xl sm:text-7xl">Tudo que o personal usa. <span className="text-blue-2">Num app só.</span></h2>
+            <h2 className="display mt-4 max-w-3xl text-[2.15rem] leading-[0.95] sm:text-5xl lg:text-[3.4rem]">Tudo que o personal usa. <span className="text-blue-2">Num app só.</span></h2>
           </RevealItem>
         </Reveal>
         <Reveal className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" stagger={0.07}>
@@ -209,7 +209,7 @@ export function Features() {
                 className="group relative h-full overflow-hidden rounded-3xl border border-line bg-card p-6">
                 <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue/0 blur-2xl transition-colors duration-500 group-hover:bg-blue/25" />
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue/15 text-ice"><f.icon className="h-6 w-6" /></span>
-                <h3 className="display mt-5 text-2xl">{f.t}</h3>
+                <h3 className="display mt-5 text-xl">{f.t}</h3>
                 <p className="mt-2 leading-relaxed text-mute">{f.d}</p>
                 {f.t === 'Modo TV do studio' && (
                   <div className="mt-5 flex items-center justify-between rounded-2xl bg-ink p-4">
@@ -254,7 +254,7 @@ export function Evolution() {
       <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 md:grid-cols-2">
         <Reveal>
           <RevealItem><Eyebrow>Avaliação e evolução</Eyebrow></RevealItem>
-          <RevealItem><h2 className="display mt-4 text-5xl sm:text-6xl">O aluno <span className="text-blue-2">vê</span> que está evoluindo.</h2></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl">O aluno <span className="text-blue-2">vê</span> que está evoluindo.</h2></RevealItem>
           <RevealItem>
             <p className="mt-5 max-w-lg leading-relaxed text-mute">
               Cada avaliação fica salva e comparada com a primeira. Peso, medidas, dobras e carga em gráfico. Aluno que enxerga resultado não cancela.
@@ -298,7 +298,7 @@ export function YourBrand() {
         <Reveal className="min-w-0">
           <RevealItem><Eyebrow>Sua marca</Eyebrow></RevealItem>
           <RevealItem>
-            <h2 className="display mt-4 text-5xl sm:text-7xl">O app é <span style={{ color: b.color }} className="transition-colors duration-500">seu.</span></h2>
+            <h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl lg:text-[3.4rem]">O app é <span style={{ color: b.color }} className="transition-colors duration-500">seu.</span></h2>
           </RevealItem>
           <RevealItem>
             <p className="mt-5 max-w-lg leading-relaxed text-mute">
@@ -353,21 +353,21 @@ export function BeforeAfter() {
       <div className="mx-auto max-w-5xl px-5">
         <Reveal className="text-center">
           <RevealItem><Eyebrow>Antes e depois</Eyebrow></RevealItem>
-          <RevealItem><h2 className="display mt-4 text-[10.5vw] sm:text-6xl">A virada é no <span className="text-blue-2">seu negócio</span></h2></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[2.1rem] leading-[0.95] sm:text-5xl">A virada é no <span className="text-blue-2">seu negócio</span></h2></RevealItem>
         </Reveal>
         <div className="relative mt-12 grid min-h-[200px] gap-4 md:grid-cols-2" aria-live="polite">
           <AnimatePresence mode="wait">
             <motion.div key={'b' + i} initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.45, ease: EASE }}
               className="rounded-3xl border border-low/30 bg-low/[0.06] p-7">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-low">Antes</p>
-              <p className="display mt-3 text-3xl text-chalk/80 line-through decoration-low/60 decoration-2">{s.before}</p>
+              <p className="display mt-3 text-[1.6rem] leading-[1.02] text-chalk/80 line-through decoration-low/60 decoration-2">{s.before}</p>
             </motion.div>
           </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.div key={'a' + i} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.45, ease: EASE, delay: 0.12 }}
               className="rounded-3xl border border-pr/30 bg-pr/[0.07] p-7">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-pr">Com o KFit</p>
-              <p className="display mt-3 text-3xl">{s.after}</p>
+              <p className="display mt-3 text-[1.6rem] leading-[1.02]">{s.after}</p>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -394,7 +394,7 @@ export function Numbers() {
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-blue-3/40 md:grid-cols-4">
         {items.map((it) => (
           <div key={it.label} className="bg-blue px-5 py-10 text-center">
-            <CountUp to={it.to} className="display block text-6xl normal-case text-white sm:text-7xl" />
+            <CountUp to={it.to} className="display block text-5xl normal-case text-white sm:text-6xl" />
             <p className="mt-2 text-sm font-semibold text-white/80">{it.label}</p>
           </div>
         ))}
@@ -410,7 +410,7 @@ export function Plans() {
       <div className="mx-auto max-w-6xl px-5">
         <Reveal className="text-center">
           <RevealItem><Eyebrow>Planos</Eyebrow></RevealItem>
-          <RevealItem><h2 className="display mt-4 text-5xl sm:text-7xl">Escolha sua <span className="text-blue-2">carga</span></h2></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl lg:text-[3.4rem]">Escolha sua <span className="text-blue-2">carga</span></h2></RevealItem>
           <RevealItem><p className="mx-auto mt-4 max-w-lg text-mute">{SITE.trialDays} dias grátis em qualquer plano. Sem cartão, sem fidelidade.</p></RevealItem>
         </Reveal>
         <Reveal className="mt-12 grid gap-5 md:grid-cols-3" stagger={0.1}>
@@ -423,10 +423,10 @@ export function Plans() {
                   {Array.from({ length: k + 1 }).map((_, j) => <span key={j} className="h-8 w-2.5 rounded-sm" style={{ background: j % 2 ? '#C9CED6' : '#2563EB' }} />)}
                   <span className="h-2 w-10 rounded-sm bg-[#9AA3AF]" />
                 </div>
-                <h3 className="display mt-5 text-4xl">{p.name}</h3>
+                <h3 className="display mt-5 text-3xl">{p.name}</h3>
                 <p className="mt-1 text-sm text-mute">{p.tag}</p>
                 <p className="mt-5">
-                  {p.price ? (<><span className="display text-5xl normal-case">R$ {p.price}</span><span className="text-mute"> /mês</span></>) : <span className="display text-3xl normal-case text-chalk/80">Preço no WhatsApp</span>}
+                  {p.price ? (<><span className="display text-4xl normal-case">R$ {p.price}</span><span className="text-mute"> /mês</span></>) : <span className="display text-2xl normal-case text-chalk/80">Preço no WhatsApp</span>}
                 </p>
                 <ul className="mt-6 space-y-3 text-sm">
                   {p.features.map((f) => <li key={f} className="flex gap-2.5"><span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-blue-2" />{f}</li>)}
@@ -460,7 +460,7 @@ export function Faq() {
       <div className="mx-auto max-w-3xl px-5">
         <Reveal className="text-center">
           <RevealItem><Eyebrow>Dúvidas</Eyebrow></RevealItem>
-          <RevealItem><h2 className="display mt-4 text-5xl sm:text-6xl">Perguntas de quem <span className="text-blue-2">treina gente</span></h2></RevealItem>
+          <RevealItem><h2 className="display mt-4 text-[2.15rem] leading-[0.95] sm:text-5xl">Perguntas de quem <span className="text-blue-2">treina gente</span></h2></RevealItem>
         </Reveal>
         <div className="mt-10 space-y-3">
           {FAQ.map(([q, a], k) => (
@@ -491,7 +491,7 @@ export function FinalCta() {
       <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(50% 60% at 50% 100%, rgb(37 99 235 / 0.35), transparent)' }} />
       <div aria-hidden="true" className="display outline-text pointer-events-none absolute inset-x-0 top-6 text-center text-[24vw] leading-none">Bora</div>
       <Reveal className="relative mx-auto max-w-3xl px-5 text-center">
-        <RevealItem><h2 className="display text-6xl sm:text-8xl">Última série.<br /><span className="text-blue-2">Bora?</span></h2></RevealItem>
+        <RevealItem><h2 className="display text-[2.8rem] leading-[0.95] sm:text-6xl">Última série.<br /><span className="text-blue-2">Bora?</span></h2></RevealItem>
         <RevealItem><p className="mx-auto mt-5 max-w-md text-lg text-mute">Teste o KFit com seus alunos por {SITE.trialDays} dias. A gente configura tudo com você pelo WhatsApp.</p></RevealItem>
         <RevealItem className="mt-8 flex justify-center">
           <motion.a href={whatsappLink('Olá! Quero testar o KFit.')} whileTap={{ scale: 0.96 }}
