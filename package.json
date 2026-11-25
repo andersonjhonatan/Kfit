@@ -1,5 +1,5 @@
 {
-  "name": "kfit-site",
+  "name": "kfit",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,21 +7,37 @@
     "build": "next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
-    "demo:sync": "node scripts/sync-prototipo.mjs"
+    "demo:sync": "node scripts/sync-prototipo.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "studio:criar": "tsx scripts/criar-studio.ts",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.18.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.79.0",
     "motion": "14.14.0",
     "next": "15.5.29",
+    "pg": "^8.23.1",
     "react": "19.1.10",
-    "react-dom": "19.1.10"
+    "react-dom": "19.1.10",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.1",
     "@types/react-dom": "^19.3.0",
+    "dotenv": "^18.0.10",
+    "drizzle-kit": "^0.31.11",
     "tailwindcss": "^4.3.5",
-    "typescript": "~5.9.3"
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.2"
   }
 }

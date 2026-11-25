@@ -1,0 +1,25 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { z } from 'zod';
+import { schema } from '@/server/db';
+import { staffWrite } from '@/server/guard';
+import { ApiError, body, ok, route } from '@/server/http';
+
+/** O personal marca um aluno num horário. */
+export const POST = route(async (req) => {
+  const { c, db } = await staffWrite(req);
+  const v = await body(req, z.object({ studentId: z.uuid(), day: z.iso.date(), time: z.string().regex(/^\d{2}:\d{2}$/) }));
+  await db(async (tx) => {
+    const wd = new Date(v.day + 'T12:00:00').getDay();
+    const [slot] = await tx.select().from(schema.slots).where(and(eq(schema.slots.weekday, wd), eq(schema.slots.time, v.time))).limit(1);
+    if (!slot) throw new ApiError(400, 'Esse horário não existe na sua agenda.');
+    const [{ n }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.bookings)
+      .where(and(eq(schema.bookings.day, v.day), eq(schema.bookings.time, v.time), inArray(schema.bookings.status, ['confirmado', 'pedido'])));
+    if (n >= slot.capacity) throw new ApiError(409, 'Horário lotado.');
+    const [s] = await tx.select({ id: schema.students.id }).from(schema.students).where(eq(schema.students.id, v.studentId)).limit(1);
+    if (!s) throw new ApiError(404, 'Aluno não encontrado.');
+    await tx.insert(schema.bookings).values({ tenantId: c.tenant.id, studentId: v.studentId, day: v.day, time: v.time, status: 'confirmado' });
+  });
+  return ok({}, { status: 201 });
+});
