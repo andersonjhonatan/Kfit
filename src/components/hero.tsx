@@ -104,7 +104,7 @@ export function Hero() {
             <RevealItem>
               <p className="mt-2 max-w-xl text-base leading-relaxed text-mute sm:text-lg">
                 Ficha com vídeo e <b className="text-chalk">meta de carga</b>, o aluno anota o que pegou, avaliação física, anamnese e contrato no WhatsApp,
-                Pix e app do aluno. Tudo com <b className="text-chalk">a sua marca</b>.
+                Pix e IA. Tudo com <b className="text-chalk">a sua marca</b>.
               </p>
             </RevealItem>
             <RevealItem className="mt-7 flex flex-wrap gap-3">

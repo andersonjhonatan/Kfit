@@ -1603,6 +1603,7 @@ export default class Component extends DCLogic {
       { key: 'hoje', label: 'Hoje', iHome: true, badge: !!s.request },
       { key: 'agenda', label: 'Agenda', iCal: true },
       { key: 'alunos', label: 'Alunos', iUsers: true },
+      { key: 'ia', label: 'IA', iSpark: true },
       { key: 'mais', label: 'Mais', iGrid: true }
     ];
     var navAluno = [
@@ -1952,7 +1953,7 @@ export default class Component extends DCLogic {
       return {
         name: studentsRaw[r.i].name, level: r.level + ' · ' + r.pct + '%', chip: chip(r.kind), why: r.why, sent: sent || !can,
         bar: 'height: 100%; width: ' + r.pct + '%; background: ' + (r.kind === 'late' ? '#FCA5A5' : r.kind === 'warn' ? '#C9CED6' : '#6EE7B7'),
-        btnLabel: !can ? 'Nenhuma ação necessária' : sent ? 'Mensagem enviada' : 'Enviar mensagem pronta',
+        btnLabel: !can ? 'Nenhuma ação necessária' : sent ? 'Mensagem enviada' : 'Enviar mensagem sugerida pela IA',
         btn: 'height: 40px; border-radius: 10px; border: 0; font-size: 12px; font-weight: 600; ' + (!can || sent ? 'background: rgba(255,255,255,0.05); color: #71717A' : 'background: #2563EB; color: #FFFFFF'),
         act: function () { if (!can) return; var x = Object.assign({}, self.state.riskSent); x[r.i] = true; self.setState({ riskSent: x }); self.notify('Enviado: "' + r.msg.slice(0, 38) + '…"'); }
       };
@@ -2217,7 +2218,7 @@ export default class Component extends DCLogic {
       waDisconnect: function () { self.setState({ wa: 'off' }); self.notify('WhatsApp desconectado'); },
       qr: qr,
       aiAgent: s.aiAgent,
-      toggleAgent: function () { var v = !self.state.aiAgent; self.setState({ aiAgent: v }); self.notify('Atendimento automático ' + (v ? 'ligado' : 'desligado')); },
+      toggleAgent: function () { var v = !self.state.aiAgent; self.setState({ aiAgent: v }); self.notify('Atendente com IA ' + (v ? 'ligado' : 'desligado')); },
       agentTrack: 'width: 52px; height: 32px; flex: none; border-radius: 999px; border: 0; padding: 3px; display: flex; ' + (s.aiAgent ? 'background: #2563EB; justify-content: flex-end' : 'background: #3F3F46; justify-content: flex-start'),
       agentKnob: 'width: 26px; height: 26px; border-radius: 999px; background: #FFFFFF',
 
@@ -2225,7 +2226,7 @@ export default class Component extends DCLogic {
       autoSummary: s.wa === 'on' ? autoOnCount + ' automações rodando' : autoOnCount + ' automações prontas',
       autoSub: s.wa === 'on' ? 'Hoje: 5 lembretes e 2 cobranças enviados no WhatsApp' : 'Começam a enviar quando o WhatsApp estiver conectado',
 
-      insightText: insightDone ? 'Feito! Diego e Elaine receberam um convite para voltar. Você é avisado quando responderem.' : 'Diego Alves faltou a todos os treinos dos últimos 9 dias e Elaine Rocha aos dos últimos 8. Mande um convite para voltarem com um toque.',
+      insightText: insightDone ? 'Feito! Diego e Elaine receberam um convite para voltar. Vou te avisar quando responderem.' : 'Diego Alves faltou a todos os treinos dos últimos 9 dias e Elaine Rocha aos dos últimos 8. Quer que eu mande um convite para voltarem?',
       insightBtn: insightDone ? 'Enviado' : 'Enviar convite',
       insightBtnStyle: 'height: 40px; padding: 0 14px; border-radius: 12px; border: 0; font-size: 13px; font-weight: 600; ' + (insightDone ? 'background: rgba(110,231,183,0.12); color: #6EE7B7' : 'background: #9AA3AF; color: #0B0B0C'),
       insightAction: function () {
@@ -2309,7 +2310,7 @@ export default class Component extends DCLogic {
       tvToggle: function () { self.toggleTv(); },
       tvReset: function () { self.resetTv(); },
       risks: risks, programs: programs,
-      newProgram: function () { self.notify('Programa criado como rascunho. Complete os treinos e publique.'); },
+      newProgram: function () { self.ask('programa', 'Criar programa online para vender'); },
       showSeguranca: s.mode === 'personal' && s.screen === 'seguranca'
     }, self.authView()), 0), { rootStyle: rootStyle });
   }
