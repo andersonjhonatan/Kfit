@@ -24,7 +24,7 @@ export const SITE = {
       name: 'Pro',
       tag: 'Para quem quer automatizar tudo',
       price: null as string | null,
-      features: ['Alunos ilimitados', 'Tudo do Solo', 'Lembretes e cobrança por Pix no WhatsApp', 'Assistente com inteligência artificial', 'Sua marca: logo, cor e link próprios'],
+      features: ['Alunos ilimitados', 'Tudo do Solo', 'Lembretes e cobrança por Pix no WhatsApp', 'Atendimento automático no WhatsApp', 'Sua marca: logo, cor e link próprios'],
       highlight: true,
     },
     {

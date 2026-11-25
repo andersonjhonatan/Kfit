@@ -21,6 +21,7 @@ const LINKS = [
   ['Sua marca', '#sua-marca', 30],
   ['Planos', '#planos', 40],
   ['Dúvidas', '#duvidas', 50],
+  ['Demonstração', '/demo', 60],
 ] as const;
 
 /** Um halter pequeno desenhado em SVG */
@@ -105,7 +106,10 @@ export function Header() {
     // deixa ver o pino entrar na placa antes de fechar
     window.setTimeout(() => {
       setOpen(false);
-      window.setTimeout(() => document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }), 380);
+      window.setTimeout(() => {
+        if (href.startsWith('/')) window.location.href = href;
+        else document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+      }, 380);
     }, 260);
   };
 

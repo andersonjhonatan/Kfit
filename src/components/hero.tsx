@@ -104,15 +104,15 @@ export function Hero() {
             <RevealItem>
               <p className="mt-2 max-w-xl text-base leading-relaxed text-mute sm:text-lg">
                 Ficha com vídeo e <b className="text-chalk">meta de carga</b>, o aluno anota o que pegou, avaliação física, anamnese e contrato no WhatsApp,
-                Pix e IA. Tudo com <b className="text-chalk">a sua marca</b>.
+                Pix e app do aluno. Tudo com <b className="text-chalk">a sua marca</b>.
               </p>
             </RevealItem>
             <RevealItem className="mt-7 flex flex-wrap gap-3">
               <a href={whatsappLink('Olá! Quero testar o KFit no meu studio.')} className="btn-lift inline-flex h-14 items-center gap-2 rounded-2xl px-6 text-base font-semibold text-white">
                 Testar {SITE.trialDays} dias grátis <ArrowRight className="h-5 w-5" />
               </a>
-              <a href="#como-funciona" className="inline-flex h-14 items-center gap-2 rounded-2xl border border-line bg-chalk/[0.04] px-5 text-base font-semibold text-chalk hover:bg-chalk/[0.08]">
-                <Play className="h-4 w-4 fill-current" /> Ver como funciona
+              <a href="/demo" className="inline-flex h-14 items-center gap-2 rounded-2xl border border-line bg-chalk/[0.04] px-5 text-base font-semibold text-chalk hover:bg-chalk/[0.08]">
+                <Play className="h-4 w-4 fill-current" /> Ver demonstração
               </a>
             </RevealItem>
             <RevealItem className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-mute">

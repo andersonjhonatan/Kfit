@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useScroll, useSpring, useTransform } from 'motion/react';
 import {
-  Activity, Bot, CalendarCheck, ChevronDown, ClipboardCheck, Dumbbell as DumbbellIcon, FileSignature, Flame,
+  Activity, CalendarCheck, ShieldCheck, ChevronDown, ClipboardCheck, Dumbbell as DumbbellIcon, FileSignature, Flame,
   MessageCircle, MonitorPlay, QrCode, Ruler, Timer, UserPlus, Wallet,
 } from 'lucide-react';
 import { DEMO_BRANDS, SITE, whatsappLink } from '@/lib/site';
@@ -180,7 +180,7 @@ const FEATURES = [
   { icon: Ruler, t: 'Avaliação física', d: '11 perímetros, Pollock 3 e 7 dobras, IMC, RCQ e % de gordura calculados na hora.' },
   { icon: FileSignature, t: 'Anamnese, PAR-Q e contrato', d: 'Chegam no WhatsApp do aluno. Ele responde e assina com o dedo.' },
   { icon: Wallet, t: 'Pix e cobrança', d: 'Lembrete no dia certo e baixa automática. Chega de cobrar no grito.' },
-  { icon: Bot, t: 'Assistente com IA', d: 'Monta treino, acha aluno sumido e escreve as mensagens por você.' },
+  { icon: ShieldCheck, t: 'Acesso protegido', d: 'O aluno entra com código no WhatsApp e senha. Você, com PIN. Cada um vê só o que é seu.' },
   { icon: CalendarCheck, t: 'Agenda e link', d: 'O aluno vê os horários livres e marca pelo seu link.' },
   { icon: MonitorPlay, t: 'Modo TV do studio', d: 'AMRAP, EMOM e Tabata na televisão, com placar da turma.', big: true },
   { icon: Flame, t: 'Hábitos e conquistas', d: 'Água, sono, proteína, sequência de treinos e ranking da turma.' },
@@ -341,7 +341,7 @@ const SWAPS = [
   { before: 'Não sabe quanto o aluno pegou', after: 'Carga de cada série registrada, acima ou abaixo da meta' },
   { before: 'Cobrar mensalidade no constrangimento', after: 'Lembrete e Pix automáticos no WhatsApp' },
   { before: 'Anamnese e contrato em folha solta', after: 'Respondidos e assinados pelo celular' },
-  { before: 'Aluno some e você nem percebe', after: 'A IA avisa quem faltou e manda o convite para voltar' },
+  { before: 'Aluno some e você nem percebe', after: 'O app avisa quem faltou e você manda o convite para voltar com um toque' },
 ];
 
 export function BeforeAfter() {

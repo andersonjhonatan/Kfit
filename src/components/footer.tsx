@@ -16,8 +16,8 @@ function Instagram({ className }: { className?: string }) {
 }
 
 const COLS: { t: string; links: [string, string, boolean?][] }[] = [
-  { t: 'Produto', links: [['Como funciona', '#como-funciona'], ['Recursos', '#recursos'], ['Sua marca', '#sua-marca'], ['Planos', '#planos'], ['Dúvidas', '#duvidas']] },
-  { t: 'Recursos', links: [['Ficha com vídeo e meta de carga', '#recursos'], ['Avaliação física', '#recursos'], ['Anamnese, PAR-Q e contrato', '#recursos'], ['Pix e cobrança automática', '#recursos'], ['Assistente com IA', '#recursos'], ['Modo TV do studio', '#recursos']] },
+  { t: 'Produto', links: [['Como funciona', '#como-funciona'], ['Ver demonstração', '/demo'], ['Recursos', '#recursos'], ['Sua marca', '#sua-marca'], ['Planos', '#planos'], ['Dúvidas', '#duvidas']] },
+  { t: 'Recursos', links: [['Ficha com vídeo e meta de carga', '#recursos'], ['Avaliação física', '#recursos'], ['Anamnese, PAR-Q e contrato', '#recursos'], ['Pix e cobrança automática', '#recursos'], ['App do aluno com login seguro', '#recursos'], ['Modo TV do studio', '#recursos']] },
   { t: 'Para quem', links: [['Personal trainer', whatsappLink('Olá! Sou personal trainer e quero conhecer o KFit.'), true], ['Studio de funcional', whatsappLink('Olá! Tenho um studio de funcional e quero conhecer o KFit.'), true], ['Consultoria online', whatsappLink('Olá! Faço consultoria online e quero conhecer o KFit.'), true], ['Pequenas academias', whatsappLink('Olá! Tenho uma academia e quero conhecer o KFit.'), true]] },
   { t: 'TresK Tecnologia', links: [['Sobre a TresK', 'https://www.tresktecnologia.com.br', true], ['KORT · agenda para barbearias', 'https://kort.tresktecnologia.com.br', true], ['KFOOD · pedidos para comida', whatsappLink('Olá! Quero saber do KFOOD.'), true]] },
 ];

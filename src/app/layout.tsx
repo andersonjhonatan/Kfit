@@ -5,7 +5,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'KFit · App para personal trainer e studio',
-  description: 'Ficha com vídeo e meta de carga, avaliação física, anamnese e contrato no WhatsApp, Pix e IA. Com a sua marca. Por TresK Tecnologia.',
+  description: 'Ficha com vídeo e meta de carga, avaliação física, anamnese e contrato no WhatsApp, Pix e app do aluno. Com a sua marca. Por TresK Tecnologia.',
   icons: { icon: '/icon.svg' },
 };
 

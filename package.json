@@ -6,7 +6,8 @@
     "dev": "next dev -p 3200",
     "build": "next build",
     "start": "next start -p 3200",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "demo:sync": "node scripts/sync-prototipo.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.79.0",
