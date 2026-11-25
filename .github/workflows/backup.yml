@@ -1,0 +1,61 @@
+# Passo 3 dos 5: BACKUP. Todo dia às 03:00 (Recife) faz uma cópia do banco,
+# criptografa e guarda por 30 dias no GitHub. Depois restaura a cópia num banco
+# vazio para provar que o backup funciona (backup que não restaura não é backup).
+#
+# Segredos do repositório (Settings → Secrets and variables → Actions):
+#   DATABASE_URL       URL do dono das tabelas (a mesma do pnpm db:migrate)
+#   BACKUP_PASSPHRASE  senha longa para criptografar a cópia (guarde num lugar seguro!)
+name: Backup do banco
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    services:
+      restore:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: teste
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 20
+    steps:
+      - name: Instalar o cliente do Postgres 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Copiar o banco
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          test -n "$DATABASE_URL" || (echo "Falta o segredo DATABASE_URL" && exit 1)
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file=kfit.dump
+          ls -lh kfit.dump
+
+      - name: Testar a restauração
+        run: |
+          export PGPASSWORD=teste
+          /usr/lib/postgresql/17/bin/pg_restore --no-owner --no-privileges -h localhost -U postgres -d postgres kfit.dump || true
+          n=$(psql -h localhost -U postgres -d postgres -tAc "select count(*) from tenants")
+          echo "studios restaurados: $n"
+          test "$n" -gt 0
+
+      - name: Criptografar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE" || (echo "Falta o segredo BACKUP_PASSPHRASE" && exit 1)
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 -o "kfit-$(date +%F).dump.gpg" kfit.dump
+          rm kfit.dump
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-kfit-${{ github.run_id }}
+          path: kfit-*.dump.gpg
+          retention-days: 30

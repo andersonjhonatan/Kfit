@@ -5,7 +5,7 @@ import { staffWrite } from '@/server/guard';
 import { ApiError, body, ok, route } from '@/server/http';
 
 type P = { params: Promise<{ id: string }> };
-export const ItemBody = z.object({
+const ItemBody = z.object({
   exerciseId: z.uuid('Escolha um exercício.'),
   sets: z.coerce.number().int().min(1).max(12).default(3),
   reps: z.string().trim().min(1).max(12).default('10'),

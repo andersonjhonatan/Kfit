@@ -153,7 +153,7 @@ export async function dashboard(db: Db, tenantId: string) {
             name: s.name,
             exercise: it.name,
             verdict: it.last.verdict,
-            detail: `Meta ${it.sets} × ${it.reps} · ${it.targetKg} kg. Fez: ${it.last.sets.map((x) => `${x.kg ?? '–'} kg × ${x.reps ?? '–'}`).join(' · ')}${it.last.pse !== null ? ` · PSE ${it.last.pse}` : ''}`,
+            detail: `Meta ${it.sets} × ${it.reps} · ${it.targetKg} kg. Fez: ${it.last.sets.map((x) => (x.kg === null ? `${x.reps ?? '–'} reps` : `${x.kg} kg × ${x.reps ?? '–'}`)).join(' · ')}${it.last.pse !== null ? ` · PSE ${it.last.pse}` : ''}`,
           });
         }
   }

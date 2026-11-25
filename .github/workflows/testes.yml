@@ -1,0 +1,37 @@
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kfit
+          POSTGRES_PASSWORD: kfit
+          POSTGRES_DB: kfit
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://kfit:kfit@localhost:5432/kfit
+      DATABASE_APP_URL: postgres://kfit_app:kfit_app@localhost:5432/kfit
+      KFIT_APP_PASSWORD: kfit_app
+      SESSION_SECRET: ci-only-0123456789abcdef0123456789abcdef
+      OTP_DEBUG: 'true'
+      KFIT_URL: http://localhost:3200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm db:migrate && pnpm db:seed
+      - run: pnpm build
+      - run: (pnpm start &) && npx wait-on -t 60000 http://localhost:3200/api/a/studio-demo/marca
+      - run: pnpm test

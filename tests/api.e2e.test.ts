@@ -12,7 +12,7 @@ const d = BASE ? describe : describe.skip;
 
 class Client {
   jar = new Map<string, string>();
-  async call(method: string, path: string, body?: unknown) {
+  async call(method: string, path: string, body?: unknown): Promise<Record<string, any>> {
     const res = await fetch(BASE + path, {
       method,
       headers: { 'content-type': 'application/json', cookie: [...this.jar].map(([k, v]) => `${k}=${v}`).join('; '), 'x-forwarded-for': this.ip },

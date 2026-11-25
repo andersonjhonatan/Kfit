@@ -22,6 +22,7 @@ const LINKS = [
   ['Planos', '#planos', 40],
   ['Dúvidas', '#duvidas', 50],
   ['Demonstração', '/demo', 60],
+  ['Entrar', '/painel', 70],
 ] as const;
 
 /** Um halter pequeno desenhado em SVG */
@@ -121,12 +122,15 @@ export function Header() {
             <Logo className="h-9 w-auto sm:h-10" />
           </a>
           <nav className="hidden items-center gap-7 text-sm font-semibold text-mute md:flex">
-            {LINKS.map(([l, h]) => (
+            {LINKS.filter(([, h]) => h !== '/painel').map(([l, h]) => (
               <a key={h} href={h} className="transition-colors hover:text-chalk">{l}</a>
             ))}
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle className="hidden sm:flex" />
+            <a href="/painel" className="hidden h-11 items-center rounded-xl px-3 text-sm font-semibold text-mute hover:text-chalk lg:inline-flex">
+              Entrar
+            </a>
             <a href={whatsappLink('Olá! Quero testar o KFit.')} className="btn-lift hidden h-11 items-center rounded-xl px-4 text-sm font-semibold text-white sm:inline-flex">
               Testar {SITE.trialDays} dias grátis
             </a>
