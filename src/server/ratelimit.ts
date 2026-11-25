@@ -1,5 +1,4 @@
 import 'server-only';
-import { sql } from 'drizzle-orm';
 import { systemDb } from './db';
 import { ApiError } from './http';
 
@@ -8,13 +7,13 @@ import { ApiError } from './http';
  * Contador por janela, guardado no próprio Postgres (funciona com várias instâncias na Vercel).
  */
 export async function hit(key: string, max: number, windowSec: number): Promise<{ ok: boolean; retryAfter: number }> {
-  const res = await systemDb.execute<{ count: number; window_start: Date }>(sql`
+  const rows = await systemDb.$queryRaw<{ count: number; window_start: Date }[]>`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, now(), 1)
     ON CONFLICT (key) DO UPDATE SET
       count = CASE WHEN rate_limits.window_start < now() - make_interval(secs => ${windowSec}) THEN 1 ELSE rate_limits.count + 1 END,
       window_start = CASE WHEN rate_limits.window_start < now() - make_interval(secs => ${windowSec}) THEN now() ELSE rate_limits.window_start END
-    RETURNING count, window_start`);
-  const row = res.rows[0];
+    RETURNING count, window_start`;
+  const row = rows[0];
   const ok = row.count <= max;
   const retryAfter = ok ? 0 : Math.max(1, Math.ceil(windowSec - (Date.now() - new Date(row.window_start).getTime()) / 1000));
   return { ok, retryAfter };

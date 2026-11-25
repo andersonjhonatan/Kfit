@@ -1,8 +1,7 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { audit } from '@/server/audit';
 import { sendOtp, startStaffSession, trustedDevice } from '@/server/auth';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 import { LIMITS, limit } from '@/server/ratelimit';
 import { checkPassword, dummyCheck, normalizePhone } from '@/server/security';
@@ -19,27 +18,22 @@ export const POST = route(async (req) => {
   if (!phone) throw new ApiError(400, 'Digite o número com DDD.');
   await limit(`login:staff:${phone}`, ...LIMITS.loginPhone);
 
-  const [row] = await systemDb
-    .select({ st: schema.staff, tn: schema.tenants })
-    .from(schema.staff)
-    .innerJoin(schema.tenants, eq(schema.tenants.id, schema.staff.tenantId))
-    .where(eq(schema.staff.phone, phone))
-    .limit(1);
-  if (!row) {
-    await dummyCheck();
+  const st = await systemDb.staff.findUnique({ where: { phone }, include: { tenant: true } });
+  if (!st) {
+    await dummyCheck(); // mesmo tempo de resposta: não revela se o número existe
     throw new ApiError(400, WRONG);
   }
-  const { st, tn } = row;
+  const tn = st.tenant;
   if (st.lockedUntil && st.lockedUntil > new Date()) {
     throw new ApiError(423, 'Conta protegida por 15 minutos depois de várias senhas erradas. Se não foi você, troque a senha pelo WhatsApp.', { need: 'blocked' });
   }
   if (!(await checkPassword(password, st.passwordHash))) {
     const fails = st.failedLogins + 1;
     const lock = fails >= 5;
-    await systemDb
-      .update(schema.staff)
-      .set({ failedLogins: lock ? 0 : fails, lockedUntil: lock ? new Date(Date.now() + 15 * 60_000) : null })
-      .where(eq(schema.staff.id, st.id));
+    await systemDb.staff.update({
+      where: { id: st.id },
+      data: { failedLogins: lock ? 0 : fails, lockedUntil: lock ? new Date(Date.now() + 15 * 60_000) : null },
+    });
     if (lock) {
       await audit({ tenantId: tn.id, actorKind: 'staff', actorId: st.id, action: 'login_travado', ip });
       if (!tn.isDemo) await sendWhatsApp(st.phone, 'KFit: erraram a senha da sua conta 5 vezes. O login ficou travado por 15 minutos. Se não foi você, troque a senha.');
@@ -47,7 +41,7 @@ export const POST = route(async (req) => {
     }
     throw new ApiError(400, `${WRONG} Restam ${5 - fails} tentativas.`);
   }
-  await systemDb.update(schema.staff).set({ failedLogins: 0, lockedUntil: null }).where(eq(schema.staff.id, st.id));
+  await systemDb.staff.update({ where: { id: st.id }, data: { failedLogins: 0, lockedUntil: null } });
 
   const device = await trustedDevice(st.id);
   if (!device) {

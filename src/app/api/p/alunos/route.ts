@@ -1,7 +1,5 @@
-import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { audit } from '@/server/audit';
-import { schema } from '@/server/db';
 import { staffRead, staffWrite } from '@/server/guard';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 import { studentsList } from '@/server/queries';
@@ -33,22 +31,13 @@ export const POST = route(async (req) => {
   if (!phone) throw new ApiError(400, 'WhatsApp inválido. Use DDD + número.');
   await limit(`novo-aluno:${c.tenant.id}`, ...LIMITS.newStudentsDay, 'Muitos cadastros hoje. Tente amanhã ou fale com a TresK.');
   const created = await db(async (tx) => {
-    const [{ n }] = await tx
-      .select({ n: sql<number>`count(*)::int` })
-      .from(schema.students)
-      .where(and(eq(schema.students.tenantId, c.tenant.id), eq(schema.students.status, 'ativo')));
+    const n = await tx.student.count({ where: { tenantId: c.tenant.id, status: 'ativo' } });
     assertStudentLimit(c.tenant, n);
-    const [dup] = await tx
-      .select({ id: schema.students.id })
-      .from(schema.students)
-      .where(and(eq(schema.students.tenantId, c.tenant.id), eq(schema.students.phone, phone)))
-      .limit(1);
+    const dup = await tx.student.findFirst({ where: { tenantId: c.tenant.id, phone }, select: { id: true } });
     if (dup) throw new ApiError(409, 'Já existe um aluno com esse WhatsApp.');
-    const [s] = await tx
-      .insert(schema.students)
-      .values({ tenantId: c.tenant.id, name: v.name, phone, goal: v.goal, sex: v.sex, heightCm: v.heightCm ?? null, days: v.days, planName: v.planName, priceCents: v.priceCents, dueDay: v.dueDay })
-      .returning();
-    return s;
+    return tx.student.create({
+      data: { tenantId: c.tenant.id, name: v.name, phone, goal: v.goal, sex: v.sex, heightCm: v.heightCm ?? null, days: v.days, planName: v.planName, priceCents: v.priceCents, dueDay: v.dueDay },
+    });
   });
   await audit({ tenantId: c.tenant.id, actorKind: 'staff', actorId: c.staff.id, action: 'aluno_cadastrado', meta: { aluno: created.name }, ip: ipOf(req) });
   const link = `${req.nextUrl.origin}/a/${c.tenant.slug}`;

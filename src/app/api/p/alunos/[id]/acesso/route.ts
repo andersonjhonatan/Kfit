@@ -1,8 +1,6 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { audit } from '@/server/audit';
 import { revokeStudentSessions } from '@/server/auth';
-import { schema } from '@/server/db';
 import { staffWrite } from '@/server/guard';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 
@@ -15,16 +13,15 @@ export const POST = route<P>(async (req, { params }) => {
   const { c, db } = await staffWrite(req);
   const { action } = await body(req, Body);
   const s = await db(async (tx) => {
-    const [cur] = await tx.select().from(schema.students).where(eq(schema.students.id, id)).limit(1);
+    const cur = await tx.student.findUnique({ where: { id } });
     if (!cur) throw new ApiError(404, 'Aluno não encontrado.');
-    const set =
+    const data =
       action === 'pausar'
         ? { accessStatus: 'pausado' }
         : action === 'liberar'
           ? { accessStatus: cur.passwordHash ? 'ativo' : 'pendente' }
           : { accessStatus: 'pendente', passwordHash: null, passwordSetAt: null, failedLogins: 0, lockedUntil: null };
-    const [u] = await tx.update(schema.students).set(set).where(eq(schema.students.id, id)).returning();
-    return u;
+    return tx.student.update({ where: { id }, data });
   });
   if (action !== 'liberar') await revokeStudentSessions(id);
   await audit({ tenantId: c.tenant.id, actorKind: 'staff', actorId: c.staff.id, action: `acesso_${action}`, meta: { aluno: s.name }, ip: ipOf(req) });

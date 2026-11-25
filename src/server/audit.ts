@@ -1,6 +1,6 @@
 import 'server-only';
 import * as Sentry from '@sentry/nextjs';
-import { systemDb, schema } from './db';
+import { systemDb } from './db';
 
 /** Registro de acesso e ações sensíveis (aparece em Segurança e acesso). Nunca derruba a requisição. */
 export async function audit(e: {
@@ -12,13 +12,15 @@ export async function audit(e: {
   ip?: string;
 }) {
   try {
-    await systemDb.insert(schema.auditLogs).values({
-      tenantId: e.tenantId,
-      actorKind: e.actorKind,
-      actorId: e.actorId ?? null,
-      action: e.action,
-      meta: e.meta ?? {},
-      ip: (e.ip ?? '').slice(0, 64),
+    await systemDb.auditLog.create({
+      data: {
+        tenantId: e.tenantId,
+        actorKind: e.actorKind,
+        actorId: e.actorId ?? null,
+        action: e.action,
+        meta: (e.meta ?? {}) as object,
+        ip: (e.ip ?? '').slice(0, 64),
+      },
     });
   } catch (err) {
     Sentry.captureException(err, { tags: { area: 'audit' } });

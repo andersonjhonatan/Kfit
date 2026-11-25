@@ -1,17 +1,15 @@
 import 'server-only';
-import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { audit } from './audit';
-import { schema, systemDb } from './db';
+import type { Staff, Student, Tenant } from '@prisma/client';
+import { systemDb } from './db';
 import { env } from './env';
 import { ApiError, ipOf } from './http';
 import { LIMITS, limit } from './ratelimit';
 import { accessOf } from './rules';
 import { codeHash, maskPhone, newCode, newToken, sameHash, tokenHash } from './security';
 import { sendWhatsApp } from './whatsapp';
-
-const { sessions, staff, students, tenants, otpCodes, devices } = schema;
 
 const STAFF_COOKIE = 'kf_staff';
 const DEVICE_COOKIE = 'kf_dev';
@@ -37,17 +35,16 @@ export async function sendOtp(s: OtpSubject, purpose: 'first' | 'reset' | 'devic
   await limit(`otp:ip:${ip}`, ...LIMITS.otpIp);
   const code = newCode();
   // um código novo cancela os anteriores do mesmo tipo
-  await systemDb
-    .update(otpCodes)
-    .set({ usedAt: new Date() })
-    .where(and(eq(otpCodes.subjectId, s.subjectId), eq(otpCodes.purpose, purpose), isNull(otpCodes.usedAt)));
-  await systemDb.insert(otpCodes).values({
-    tenantId: s.tenantId,
-    subject: s.subject,
-    subjectId: s.subjectId,
-    purpose,
-    codeHash: codeHash(code, s.subjectId),
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+  await systemDb.otpCode.updateMany({ where: { subjectId: s.subjectId, purpose, usedAt: null }, data: { usedAt: new Date() } });
+  await systemDb.otpCode.create({
+    data: {
+      tenantId: s.tenantId,
+      subject: s.subject,
+      subjectId: s.subjectId,
+      purpose,
+      codeHash: codeHash(code, s.subjectId),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
   });
   const intro = purpose === 'device' ? 'Alguém está entrando na sua conta KFit num aparelho novo. ' : '';
   const text = `${brandName}: ${intro}seu código é ${code.slice(0, 3)} ${code.slice(3)}. Vale por 10 minutos. Não passe para ninguém.`;
@@ -61,41 +58,30 @@ export async function sendOtp(s: OtpSubject, purpose: 'first' | 'reset' | 'devic
 
 /** Confere o código. Acertou: devolve um ticket de uso único (15 min) para o próximo passo. */
 export async function checkOtp(subjectId: string, purpose: string, code: string) {
-  const [row] = await systemDb
-    .select()
-    .from(otpCodes)
-    .where(and(eq(otpCodes.subjectId, subjectId), eq(otpCodes.purpose, purpose), isNull(otpCodes.usedAt), gt(otpCodes.expiresAt, new Date())))
-    .orderBy(desc(otpCodes.createdAt))
-    .limit(1);
+  const row = await systemDb.otpCode.findFirst({
+    where: { subjectId, purpose, usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  });
   if (!row) throw new ApiError(400, 'Esse código não vale mais. Peça um novo.');
   if (!sameHash(row.codeHash, codeHash(code, subjectId))) {
     const attempts = row.attempts + 1;
-    await systemDb
-      .update(otpCodes)
-      .set({ attempts, ...(attempts >= 5 ? { usedAt: new Date() } : {}) })
-      .where(eq(otpCodes.id, row.id));
+    await systemDb.otpCode.update({ where: { id: row.id }, data: { attempts, ...(attempts >= 5 ? { usedAt: new Date() } : {}) } });
     if (attempts >= 5) throw new ApiError(400, 'Código errado 5 vezes. Por segurança, ele foi cancelado. Peça um novo.');
     throw new ApiError(400, `Código errado. Restam ${5 - attempts} tentativas.`);
   }
   const ticket = newToken();
-  await systemDb.update(otpCodes).set({ usedAt: new Date(), ticketHash: tokenHash(ticket) }).where(eq(otpCodes.id, row.id));
+  await systemDb.otpCode.update({ where: { id: row.id }, data: { usedAt: new Date(), ticketHash: tokenHash(ticket) } });
   return ticket;
 }
 
 /** Gasta o ticket (uso único, até 15 min depois do código). */
 export async function useTicket(subjectId: string, ticket: string) {
-  const [row] = await systemDb
-    .update(otpCodes)
-    .set({ ticketHash: null })
-    .where(
-      and(
-        eq(otpCodes.subjectId, subjectId),
-        eq(otpCodes.ticketHash, tokenHash(ticket)),
-        gt(otpCodes.usedAt, new Date(Date.now() - 15 * 60 * 1000)),
-      ),
-    )
-    .returning({ purpose: otpCodes.purpose });
-  if (!row) throw new ApiError(400, 'Esse passo expirou. Comece de novo.');
+  const row = await systemDb.otpCode.findFirst({
+    where: { subjectId, ticketHash: tokenHash(ticket), usedAt: { gt: new Date(Date.now() - 15 * 60 * 1000) } },
+  });
+  // uso único: só um pedido consegue apagar o ticket
+  const used = row ? await systemDb.otpCode.updateMany({ where: { id: row.id, ticketHash: row.ticketHash }, data: { ticketHash: null } }) : { count: 0 };
+  if (!row || used.count !== 1) throw new ApiError(400, 'Esse passo expirou. Comece de novo.');
   return row.purpose;
 }
 
@@ -103,28 +89,26 @@ export async function useTicket(subjectId: string, ticket: string) {
 
 export async function startStaffSession(st: { id: string; tenantId: string }, deviceId: string | null, pinOk: boolean) {
   const token = newToken();
-  await systemDb.insert(sessions).values({
-    tenantId: st.tenantId,
-    kind: 'staff',
-    staffId: st.id,
-    deviceId,
-    tokenHash: tokenHash(token),
-    pinOkAt: pinOk ? new Date() : null,
-    expiresAt: new Date(Date.now() + 30 * DAY),
+  await systemDb.session.create({
+    data: {
+      tenantId: st.tenantId,
+      kind: 'staff',
+      staffId: st.id,
+      deviceId,
+      tokenHash: tokenHash(token),
+      pinOkAt: pinOk ? new Date() : null,
+      expiresAt: new Date(Date.now() + 30 * DAY),
+    },
   });
   await setCookie(STAFF_COOKIE, token, 30 * 24 * 3600);
 }
 
 export async function startStudentSession(slug: string, st: { id: string; tenantId: string }) {
   const token = newToken();
-  await systemDb.insert(sessions).values({
-    tenantId: st.tenantId,
-    kind: 'student',
-    studentId: st.id,
-    tokenHash: tokenHash(token),
-    expiresAt: new Date(Date.now() + 90 * DAY),
+  await systemDb.session.create({
+    data: { tenantId: st.tenantId, kind: 'student', studentId: st.id, tokenHash: tokenHash(token), expiresAt: new Date(Date.now() + 90 * DAY) },
   });
-  await systemDb.update(students).set({ lastAccessAt: new Date(), failedLogins: 0, lockedUntil: null }).where(eq(students.id, st.id));
+  await systemDb.student.update({ where: { id: st.id }, data: { lastAccessAt: new Date(), failedLogins: 0, lockedUntil: null } });
   await setCookie(studentCookie(slug), token, 90 * 24 * 3600);
 }
 
@@ -132,21 +116,13 @@ export async function startStudentSession(slug: string, st: { id: string; tenant
 export async function trustedDevice(staffId: string) {
   const t = (await cookies()).get(DEVICE_COOKIE)?.value;
   if (!t) return null;
-  const [d] = await systemDb
-    .select()
-    .from(devices)
-    .where(and(eq(devices.tokenHash, tokenHash(t)), eq(devices.staffId, staffId)))
-    .limit(1);
-  return d ?? null;
+  return systemDb.device.findFirst({ where: { tokenHash: tokenHash(t), staffId } });
 }
 
 export async function trustNewDevice(st: { id: string; tenantId: string }, req: NextRequest) {
   const token = newToken();
   const label = deviceLabel(req.headers.get('user-agent') ?? '');
-  const [d] = await systemDb
-    .insert(devices)
-    .values({ tenantId: st.tenantId, staffId: st.id, tokenHash: tokenHash(token), label, lastIp: ipOf(req) })
-    .returning();
+  const d = await systemDb.device.create({ data: { tenantId: st.tenantId, staffId: st.id, tokenHash: tokenHash(token), label, lastIp: ipOf(req) } });
   await setCookie(DEVICE_COOKIE, token, 365 * 24 * 3600);
   return d;
 }
@@ -159,8 +135,8 @@ function deviceLabel(ua: string) {
 
 export type StaffCtx = {
   sessionId: string;
-  staff: typeof staff.$inferSelect;
-  tenant: typeof tenants.$inferSelect;
+  staff: Staff;
+  tenant: Tenant;
   deviceId: string | null;
 };
 
@@ -171,13 +147,11 @@ export type StaffCtx = {
 export async function requireStaff(req: NextRequest, opts: { allowLocked?: boolean } = {}): Promise<StaffCtx> {
   const t = (await cookies()).get(STAFF_COOKIE)?.value;
   if (!t) throw new ApiError(401, 'Entre na sua conta.');
-  const [row] = await systemDb
-    .select({ s: sessions, st: staff, tn: tenants })
-    .from(sessions)
-    .innerJoin(staff, eq(staff.id, sessions.staffId))
-    .innerJoin(tenants, eq(tenants.id, sessions.tenantId))
-    .where(and(eq(sessions.tokenHash, tokenHash(t)), eq(sessions.kind, 'staff'), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date())))
-    .limit(1);
+  const s = await systemDb.session.findFirst({
+    where: { tokenHash: tokenHash(t), kind: 'staff', revokedAt: null, expiresAt: { gt: new Date() } },
+    include: { staff: true, tenant: true },
+  });
+  const row = s && s.staff ? { s, st: s.staff, tn: s.tenant } : null;
   if (!row) {
     await clearCookie(STAFF_COOKIE);
     throw new ApiError(401, 'Sua sessão terminou. Entre de novo.');
@@ -190,14 +164,14 @@ export async function requireStaff(req: NextRequest, opts: { allowLocked?: boole
   const locked = !row.st.pinHash ? 'pin_create' : !row.s.pinOkAt || idleMs > lockMs ? 'pin' : null;
 
   if (locked && !opts.allowLocked) {
-    if (locked === 'pin' && row.s.pinOkAt) await systemDb.update(sessions).set({ pinOkAt: null }).where(eq(sessions.id, row.s.id));
+    if (locked === 'pin' && row.s.pinOkAt) await systemDb.session.update({ where: { id: row.s.id }, data: { pinOkAt: null } });
     throw new ApiError(423, locked === 'pin' ? 'App bloqueado. Digite seu PIN.' : 'Crie o PIN do app.', { need: locked, name: row.st.name });
   }
   if (!locked && idleMs > 20_000) {
-    await systemDb.update(sessions).set({ lastSeenAt: new Date() }).where(eq(sessions.id, row.s.id));
+    await systemDb.session.update({ where: { id: row.s.id }, data: { lastSeenAt: new Date() } });
   }
   if (row.s.deviceId && idleMs > 60_000) {
-    await systemDb.update(devices).set({ lastSeenAt: new Date(), lastIp: ipOf(req) }).where(eq(devices.id, row.s.deviceId));
+    await systemDb.device.updateMany({ where: { id: row.s.deviceId }, data: { lastSeenAt: new Date(), lastIp: ipOf(req) } });
   }
   return { sessionId: row.s.id, staff: row.st, tenant: row.tn, deviceId: row.s.deviceId };
 }
@@ -208,71 +182,66 @@ export async function unlockWithPin(req: NextRequest, pin: string, checkPin: (pi
   await limit(`pin:${ctx.sessionId}`, 10, 60);
   const okPin = await checkPin(pin, ctx.staff.pinHash);
   if (okPin) {
-    await systemDb.update(sessions).set({ pinOkAt: new Date(), pinFails: 0, lastSeenAt: new Date() }).where(eq(sessions.id, ctx.sessionId));
+    await systemDb.session.update({ where: { id: ctx.sessionId }, data: { pinOkAt: new Date(), pinFails: 0, lastSeenAt: new Date() } });
     return ctx;
   }
-  const [s] = await systemDb
-    .update(sessions)
-    .set({ pinFails: sql`${sessions.pinFails} + 1` })
-    .where(eq(sessions.id, ctx.sessionId))
-    .returning({ fails: sessions.pinFails });
-  if (s.fails >= 3) {
-    await systemDb.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, ctx.sessionId));
+  const s = await systemDb.session.update({ where: { id: ctx.sessionId }, data: { pinFails: { increment: 1 } }, select: { pinFails: true } });
+  const fails = s.pinFails;
+  if (fails >= 3) {
+    await systemDb.session.update({ where: { id: ctx.sessionId }, data: { revokedAt: new Date() } });
     await audit({ tenantId: ctx.tenant.id, actorKind: 'staff', actorId: ctx.staff.id, action: 'pin_errado_3x', ip: ipOf(req) });
     await clearCookie(STAFF_COOKIE);
     throw new ApiError(401, 'PIN errado 3 vezes. Por segurança, entre com a senha.');
   }
-  throw new ApiError(400, `PIN errado. Restam ${3 - s.fails} tentativas.`);
+  throw new ApiError(400, `PIN errado. Restam ${3 - fails} tentativas.`);
 }
 
 export async function lockStaff(req: NextRequest) {
   const ctx = await requireStaff(req, { allowLocked: true });
-  await systemDb.update(sessions).set({ pinOkAt: null }).where(eq(sessions.id, ctx.sessionId));
+  await systemDb.session.update({ where: { id: ctx.sessionId }, data: { pinOkAt: null } });
 }
 
 export async function logoutStaff() {
   const t = (await cookies()).get(STAFF_COOKIE)?.value;
-  if (t) await systemDb.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.tokenHash, tokenHash(t)));
+  if (t) await systemDb.session.updateMany({ where: { tokenHash: tokenHash(t) }, data: { revokedAt: new Date() } });
   await clearCookie(STAFF_COOKIE);
 }
 
-export type StudentCtx = { sessionId: string; student: typeof students.$inferSelect; tenant: typeof tenants.$inferSelect };
+export type StudentCtx = { sessionId: string; student: Student; tenant: Tenant };
 
 /** Exige aluno logado neste studio, com acesso liberado pelo personal. */
 export async function requireStudent(slug: string): Promise<StudentCtx> {
   const t = (await cookies()).get(studentCookie(slug))?.value;
   if (!t) throw new ApiError(401, 'Entre no app.');
-  const [row] = await systemDb
-    .select({ s: sessions, st: students, tn: tenants })
-    .from(sessions)
-    .innerJoin(students, eq(students.id, sessions.studentId))
-    .innerJoin(tenants, eq(tenants.id, sessions.tenantId))
-    .where(and(eq(sessions.tokenHash, tokenHash(t)), eq(sessions.kind, 'student'), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date())))
-    .limit(1);
+  const s = await systemDb.session.findFirst({
+    where: { tokenHash: tokenHash(t), kind: 'student', revokedAt: null, expiresAt: { gt: new Date() } },
+    include: { student: true, tenant: true },
+  });
+  const row = s && s.student ? { s, st: s.student, tn: s.tenant } : null;
   if (!row || row.tn.slug !== slug) {
     await clearCookie(studentCookie(slug));
     throw new ApiError(401, 'Sua sessão terminou. Entre de novo.');
   }
   if (row.st.accessStatus === 'pausado' || row.st.status !== 'ativo') {
-    await systemDb.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, row.s.id));
+    await systemDb.session.update({ where: { id: row.s.id }, data: { revokedAt: new Date() } });
     await clearCookie(studentCookie(slug));
     throw new ApiError(403, 'Seu acesso está pausado pelo personal. Fale com ele para liberar.');
   }
   if (accessOf(row.tn) === 'blocked') throw new ApiError(403, 'O app deste studio está suspenso no momento.');
   if (Date.now() - row.s.lastSeenAt.getTime() > 5 * 60_000) {
-    await systemDb.update(sessions).set({ lastSeenAt: new Date() }).where(eq(sessions.id, row.s.id));
-    await systemDb.update(students).set({ lastAccessAt: new Date() }).where(eq(students.id, row.st.id));
+    await systemDb.session.update({ where: { id: row.s.id }, data: { lastSeenAt: new Date() } });
+    await systemDb.student.update({ where: { id: row.st.id }, data: { lastAccessAt: new Date() } });
   }
   return { sessionId: row.s.id, student: row.st, tenant: row.tn };
 }
 
 export async function logoutStudent(slug: string) {
   const t = (await cookies()).get(studentCookie(slug))?.value;
-  if (t) await systemDb.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.tokenHash, tokenHash(t)));
+  if (t) await systemDb.session.updateMany({ where: { tokenHash: tokenHash(t) }, data: { revokedAt: new Date() } });
   await clearCookie(studentCookie(slug));
 }
 
 /** Derruba todas as sessões de um aluno (pausar acesso, zerar senha). */
 export async function revokeStudentSessions(studentId: string) {
-  await systemDb.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.studentId, studentId), isNull(sessions.revokedAt)));
+  await systemDb.session.updateMany({ where: { studentId, revokedAt: null }, data: { revokedAt: new Date() } });
 }

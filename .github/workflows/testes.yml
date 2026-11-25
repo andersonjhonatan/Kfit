@@ -31,7 +31,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm db:migrate && pnpm db:seed
+      - run: pnpm db:migrate && pnpm db:senha-app && pnpm db:seed
       - run: pnpm build
       - run: (pnpm start &) && npx wait-on -t 60000 http://localhost:3200/api/a/studio-demo/marca
       - run: pnpm test

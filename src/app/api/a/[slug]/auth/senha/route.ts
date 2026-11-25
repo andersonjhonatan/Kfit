@@ -1,8 +1,7 @@
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { audit } from '@/server/audit';
 import { revokeStudentSessions, startStudentSession, useTicket } from '@/server/auth';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 import { hashPassword, normalizePhone, passwordProblem } from '@/server/security';
 import { tenantBySlug } from '@/server/tenant';
@@ -16,21 +15,17 @@ export const POST = route<{ params: Promise<{ slug: string }> }>(async (req, { p
   const { phone: raw, ticket, password } = await body(req, Body);
   const phone = normalizePhone(raw);
   if (!phone) throw new ApiError(400, 'Telefone inválido.');
-  const [st] = await systemDb
-    .select()
-    .from(schema.students)
-    .where(and(eq(schema.students.tenantId, tn.id), eq(schema.students.phone, phone)))
-    .limit(1);
+  const st = await systemDb.student.findUnique({ where: { tenantId_phone: { tenantId: tn.id, phone } } });
   if (!st) throw new ApiError(400, 'Esse passo expirou. Comece de novo.');
   if (st.accessStatus === 'pausado') throw new ApiError(403, 'Seu acesso está pausado pelo personal.');
   const problem = passwordProblem(password, phone);
   if (problem) throw new ApiError(400, problem);
   const purpose = await useTicket(st.id, ticket);
   await revokeStudentSessions(st.id);
-  await systemDb
-    .update(schema.students)
-    .set({ passwordHash: await hashPassword(password), passwordSetAt: new Date(), accessStatus: 'ativo', failedLogins: 0, lockedUntil: null })
-    .where(eq(schema.students.id, st.id));
+  await systemDb.student.update({
+    where: { id: st.id },
+    data: { passwordHash: await hashPassword(password), passwordSetAt: new Date(), accessStatus: 'ativo', failedLogins: 0, lockedUntil: null },
+  });
   await startStudentSession(slug, st);
   await audit({ tenantId: tn.id, actorKind: 'student', actorId: st.id, action: purpose === 'first' ? 'aluno_primeiro_acesso' : 'aluno_trocou_senha', ip: ipOf(req) });
   return ok({ step: 'in' });

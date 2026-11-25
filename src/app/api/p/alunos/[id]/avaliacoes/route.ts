@@ -1,6 +1,5 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema } from '@/server/db';
+import { toDay } from '@/server/db';
 import { staffWrite } from '@/server/guard';
 import { ApiError, body, ok, route } from '@/server/http';
 import { today } from '@/server/queries';
@@ -23,19 +22,21 @@ export const POST = route<P>(async (req, { params }) => {
   const day = v.day ?? today();
   if (day > today()) throw new ApiError(400, 'A data não pode ser no futuro.');
   await db(async (tx) => {
-    const [s] = await tx.select().from(schema.students).where(eq(schema.students.id, studentId)).limit(1);
+    const s = await tx.student.findUnique({ where: { id: studentId } });
     if (!s) throw new ApiError(404, 'Aluno não encontrado.');
-    await tx.insert(schema.assessments).values({
-      tenantId: c.tenant.id,
-      studentId,
-      day,
-      weightKg: String(v.weightKg),
-      heightCm: v.heightCm ?? s.heightCm,
-      bodyFatPct: v.bodyFatPct == null ? null : String(v.bodyFatPct),
-      measures: v.measures,
-      notes: v.notes,
+    await tx.assessment.create({
+      data: {
+        tenantId: c.tenant.id,
+        studentId,
+        day: toDay(day),
+        weightKg: v.weightKg,
+        heightCm: v.heightCm ?? s.heightCm,
+        bodyFatPct: v.bodyFatPct ?? null,
+        measures: v.measures,
+        notes: v.notes,
+      },
     });
-    if (v.heightCm && v.heightCm !== s.heightCm) await tx.update(schema.students).set({ heightCm: v.heightCm }).where(eq(schema.students.id, studentId));
+    if (v.heightCm && v.heightCm !== s.heightCm) await tx.student.update({ where: { id: studentId }, data: { heightCm: v.heightCm } });
   });
   return ok({}, { status: 201 });
 });

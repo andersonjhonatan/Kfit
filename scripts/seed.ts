@@ -1,19 +1,15 @@
 // pnpm db:seed — cria (ou recria) o studio de demonstração e a biblioteca de exercícios.
-import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Client } from 'pg';
-import * as schema from '../src/server/db/schema';
-import { DEMO_STAFF_PASSWORD, DEMO_STAFF_PHONE, seedDemo } from '../src/server/seed-demo';
+import { DEMO_STAFF_PASSWORD, seedDemo } from '../src/server/seed-demo';
+import { prisma } from './db';
 
 async function main() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
-  await client.connect();
-  const r = await seedDemo(drizzle(client, { schema }));
-  await client.end();
+  const r = await seedDemo(prisma);
   console.log(`Studio de demonstração pronto: /a/${r.slug}`);
-  console.log(`Personal: (87) 99900-1234 · senha ${DEMO_STAFF_PASSWORD} (${DEMO_STAFF_PHONE})`);
+  console.log(`Personal: (87) 99900-1234 · senha ${DEMO_STAFF_PASSWORD}`);
 }
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect());

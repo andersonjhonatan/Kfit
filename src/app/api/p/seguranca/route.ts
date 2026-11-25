@@ -1,6 +1,5 @@
-import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { staffRead } from '@/server/guard';
 import { body, ok, route } from '@/server/http';
 
@@ -27,32 +26,21 @@ const LABEL: Record<string, string> = {
 
 export const GET = route(async (req) => {
   const { c } = await staffRead(req);
-  const devs = await systemDb.select().from(schema.devices).where(eq(schema.devices.staffId, c.staff.id)).orderBy(desc(schema.devices.lastSeenAt));
-  const logs = await systemDb
-    .select()
-    .from(schema.auditLogs)
-    .where(eq(schema.auditLogs.tenantId, c.tenant.id))
-    .orderBy(desc(schema.auditLogs.createdAt))
-    .limit(25);
-  const [counts] = await systemDb
-    .select({
-      active: sql<number>`count(*) filter (where ${schema.students.accessStatus} = 'ativo')::int`,
-      pending: sql<number>`count(*) filter (where ${schema.students.accessStatus} = 'pendente')::int`,
-      paused: sql<number>`count(*) filter (where ${schema.students.accessStatus} = 'pausado')::int`,
-    })
-    .from(schema.students)
-    .where(and(eq(schema.students.tenantId, c.tenant.id), eq(schema.students.status, 'ativo')));
-  const live = await systemDb
-    .select({ deviceId: schema.sessions.deviceId })
-    .from(schema.sessions)
-    .where(and(eq(schema.sessions.staffId, c.staff.id), isNull(schema.sessions.revokedAt), gt(schema.sessions.expiresAt, new Date())));
+  const [devs, logs, groups, live] = await Promise.all([
+    systemDb.device.findMany({ where: { staffId: c.staff.id }, orderBy: { lastSeenAt: 'desc' } }),
+    systemDb.auditLog.findMany({ where: { tenantId: c.tenant.id }, orderBy: { createdAt: 'desc' }, take: 25 }),
+    systemDb.student.groupBy({ by: ['accessStatus'], where: { tenantId: c.tenant.id, status: 'ativo' }, _count: { _all: true } }),
+    systemDb.session.findMany({ where: { staffId: c.staff.id, revokedAt: null, expiresAt: { gt: new Date() } }, select: { deviceId: true } }),
+  ]);
+  const count = (k: string) => groups.find((g) => g.accessStatus === k)?._count._all ?? 0;
   return ok({
     settings: { lockAfterMin: c.staff.lockAfterMin, alertNewDevice: c.staff.alertNewDevice },
-    devices: devs
-      .filter((d) => live.some((l) => l.deviceId === d.id))
-      .map((d) => ({ id: d.id, label: d.label, lastSeenAt: d.lastSeenAt, current: d.id === c.deviceId })),
-    log: logs.map((l) => ({ at: l.createdAt, text: LABEL[l.action] ?? l.action, detail: (l.meta as Record<string, string>).aluno ?? (l.meta as Record<string, string>).aparelho ?? '', bad: /travado|errado/.test(l.action) })),
-    students: counts,
+    devices: devs.filter((d) => live.some((l) => l.deviceId === d.id)).map((d) => ({ id: d.id, label: d.label, lastSeenAt: d.lastSeenAt, current: d.id === c.deviceId })),
+    log: logs.map((l) => {
+      const m = (l.meta ?? {}) as Record<string, string>;
+      return { at: l.createdAt, text: LABEL[l.action] ?? l.action, detail: m.aluno ?? m.aparelho ?? '', bad: /travado|errado/.test(l.action) };
+    }),
+    students: { active: count('ativo'), pending: count('pendente'), paused: count('pausado') },
   });
 });
 
@@ -61,6 +49,6 @@ const Patch = z.object({ lockAfterMin: z.coerce.number().int().refine((v) => [1,
 export const PATCH = route(async (req) => {
   const { c } = await staffRead(req);
   const v = await body(req, Patch);
-  await systemDb.update(schema.staff).set(v).where(eq(schema.staff.id, c.staff.id));
+  await systemDb.staff.update({ where: { id: c.staff.id }, data: v });
   return ok();
 });

@@ -1,6 +1,4 @@
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema } from '@/server/db';
 import { staffWrite } from '@/server/guard';
 import { ApiError, body, ok, route } from '@/server/http';
 
@@ -19,21 +17,15 @@ export const POST = route<P>(async (req, { params }) => {
   const { c, db } = await staffWrite(req);
   const v = await body(req, ItemBody);
   const it = await db(async (tx) => {
-    const [w] = await tx.select().from(schema.workouts).where(eq(schema.workouts.id, workoutId)).limit(1);
+    const w = await tx.workout.findUnique({ where: { id: workoutId } });
     if (!w) throw new ApiError(404, 'Treino não encontrado.');
-    const [ex] = await tx
-      .select({ id: schema.exercises.id })
-      .from(schema.exercises)
-      .where(and(eq(schema.exercises.id, v.exerciseId), or(isNull(schema.exercises.tenantId), eq(schema.exercises.tenantId, c.tenant.id))))
-      .limit(1);
+    const ex = await tx.exercise.findFirst({ where: { id: v.exerciseId, OR: [{ tenantId: null }, { tenantId: c.tenant.id }] }, select: { id: true } });
     if (!ex) throw new ApiError(400, 'Exercício não encontrado.');
-    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(schema.workoutItems).where(eq(schema.workoutItems.workoutId, workoutId));
+    const n = await tx.workoutItem.count({ where: { workoutId } });
     if (n >= 20) throw new ApiError(400, 'Limite de 20 exercícios por treino.');
-    const [row] = await tx
-      .insert(schema.workoutItems)
-      .values({ tenantId: c.tenant.id, studentId: w.studentId, workoutId, exerciseId: v.exerciseId, position: n, sets: v.sets, reps: v.reps, targetKg: v.targetKg == null ? null : String(v.targetKg), restSec: v.restSec, notes: v.notes })
-      .returning();
-    return row;
+    return tx.workoutItem.create({
+      data: { tenantId: c.tenant.id, studentId: w.studentId, workoutId, exerciseId: v.exerciseId, position: n, sets: v.sets, reps: v.reps, targetKg: v.targetKg ?? null, restSec: v.restSec, notes: v.notes },
+    });
   });
   return ok({ id: it.id }, { status: 201 });
 });

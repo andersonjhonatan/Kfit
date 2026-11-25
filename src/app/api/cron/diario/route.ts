@@ -1,6 +1,5 @@
-import { and, isNotNull, lt, or, sql } from 'drizzle-orm';
 import { NextResponse, type NextRequest } from 'next/server';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { route } from '@/server/http';
 import { seedDemo } from '@/server/seed-demo';
 
@@ -15,12 +14,10 @@ export const GET = route(async (req: NextRequest) => {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 });
   }
   const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
-  await systemDb.delete(schema.otpCodes).where(lt(schema.otpCodes.createdAt, dayAgo));
-  await systemDb.delete(schema.rateLimits).where(lt(schema.rateLimits.windowStart, dayAgo));
-  await systemDb
-    .delete(schema.sessions)
-    .where(or(lt(schema.sessions.expiresAt, new Date()), and(isNotNull(schema.sessions.revokedAt), lt(schema.sessions.revokedAt, dayAgo))));
-  await systemDb.delete(schema.auditLogs).where(lt(schema.auditLogs.createdAt, sql`now() - interval '180 days'`));
+  await systemDb.otpCode.deleteMany({ where: { createdAt: { lt: dayAgo } } });
+  await systemDb.rateLimit.deleteMany({ where: { windowStart: { lt: dayAgo } } });
+  await systemDb.session.deleteMany({ where: { OR: [{ expiresAt: { lt: new Date() } }, { revokedAt: { lt: dayAgo } }] } });
+  await systemDb.auditLog.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 180 * 86_400_000) } } });
   const demo = await seedDemo(systemDb);
   return NextResponse.json({ ok: true, demo: demo.slug });
 });

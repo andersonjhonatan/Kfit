@@ -1,6 +1,4 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema } from '@/server/db';
 import { staffWrite } from '@/server/guard';
 import { body, ok, route } from '@/server/http';
 
@@ -17,10 +15,10 @@ export const PATCH = route(async (req) => {
   const { c, db } = await staffWrite(req);
   const v = await body(req, Body);
   await db((tx) =>
-    tx
-      .update(schema.tenants)
-      .set({ name: v.name, tagline: v.tagline, brandColor: v.color, brandMono: v.mono?.toUpperCase(), brandShape: v.shape, pixKey: v.pixKey })
-      .where(eq(schema.tenants.id, c.tenant.id)),
+    tx.tenant.update({
+      where: { id: c.tenant.id },
+      data: { name: v.name, tagline: v.tagline, brandColor: v.color, brandMono: v.mono?.toUpperCase(), brandShape: v.shape, pixKey: v.pixKey },
+    }),
   );
   return ok();
 });

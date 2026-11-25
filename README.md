@@ -33,23 +33,27 @@ com um studio de exemplo. Nada é salvo; é para mostrar ao cliente.
 
 - **/painel**: área do personal (alunos, fichas com meta de carga, avaliação, agenda, mensalidades, IA, marca, segurança).
 - **/a/<studio>**: app do aluno com a marca do personal (início, treino, evolução, marcar horário).
-- Banco: Postgres + Drizzle (`src/server/db/schema.ts`, migrations em `drizzle/`).
+- Base: **Next.js + Prisma + PostgreSQL + Tailwind CSS**. Schema em `prisma/schema.prisma`, migrations em `prisma/migrations/`.
 
 ### Rodar no computador
 
 ```bash
 cp .env.example .env          # preencha DATABASE_URL, DATABASE_APP_URL, SESSION_SECRET; OTP_DEBUG=true
-KFIT_APP_PASSWORD=kfit_app pnpm db:migrate
+pnpm db:migrate               # prisma migrate deploy (cria as tabelas e a trava)
+KFIT_APP_PASSWORD=kfit_app pnpm db:senha-app
 pnpm db:seed                  # studio de demonstração: /a/studio-demo · personal (87) 99900-1234 · senha kfit123
 pnpm dev
 pnpm test                     # trava do banco; com o servidor rodando: KFIT_URL=http://localhost:3200 pnpm test
 ```
 
+Mudou o `schema.prisma`? Rode `pnpm db:dev --name o-que-mudou` para criar a migration (o Prisma gera o SQL) e confirme no Git.
+A trava (RLS) de tabela nova é escrita à mão numa migration, como em `*_seguranca`.
+
 ### Os 5 passos de segurança
 
 | Passo | Onde está | Como foi testado |
 | --- | --- | --- |
-| 1. Trava em toda tabela | RLS em todas as tabelas (`drizzle/0001_seguranca.sql`); toda rota depois do login usa o papel `kfit_app` sem bypass, travado por studio e, no app do aluno, pelo próprio aluno (`src/server/db/index.ts`) | `tests/trava-do-banco.test.ts`: 2 studios e 2 alunos tentando ler e alterar os dados um do outro |
+| 1. Trava em toda tabela | RLS em todas as tabelas (`prisma/migrations/*_seguranca/migration.sql`); toda rota depois do login usa o papel `kfit_app` sem bypass, travado por studio e, no app do aluno, pelo próprio aluno (`src/server/db/index.ts`) | `tests/trava-do-banco.test.ts`: 2 studios e 2 alunos tentando ler e alterar os dados um do outro |
 | 2. Regra no servidor | Plano, teste grátis, limite de alunos, IA, PIN, acesso do aluno: `src/server/rules.ts`, `src/server/auth.ts` | `tests/api.e2e.test.ts`: teste vencido não cadastra, Solo sem IA, PIN errado 3× derruba a sessão, aluno pausado cai na hora |
 | 3. Backup | `.github/workflows/backup.yml`: cópia diária criptografada (30 dias) e restauração de teste num banco vazio | o próprio workflow falha se a cópia não restaurar |
 | 4. Limite de uso | `src/server/ratelimit.ts`: login por IP e por telefone, códigos de WhatsApp por número e por IP, cadastros por dia, escrita por minuto, IA por dia | `tests/api.e2e.test.ts`: 10 tentativas no mesmo número → 429 |
@@ -58,7 +62,7 @@ pnpm test                     # trava do banco; com o servidor rodando: KFIT_URL
 ### Colocar no ar (Vercel + Neon)
 
 1. Crie um banco no **Neon** (região São Paulo). Copie a URL do dono para `DATABASE_URL`.
-2. No computador, com essa URL no `.env`: `KFIT_APP_PASSWORD=<senha forte> pnpm db:migrate` e `pnpm db:seed`.
+2. No computador, com essa URL no `.env`: `pnpm db:migrate`, `KFIT_APP_PASSWORD=<senha forte> pnpm db:senha-app` e `pnpm db:seed`.
 3. Na Vercel, importe o repositório e preencha as variáveis do `.env.example`:
    `DATABASE_APP_URL` é a URL com pool do Neon, mas com usuário `kfit_app` e a senha do passo 2.
    Gere `SESSION_SECRET` e `CRON_SECRET` com `openssl rand -hex 32`. **Não** ligue `OTP_DEBUG` em produção.

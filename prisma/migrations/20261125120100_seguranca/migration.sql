@@ -17,49 +17,39 @@ BEGIN
   END IF;
 END
 $$;
---> statement-breakpoint
+
 GRANT USAGE ON SCHEMA public TO kfit_app;
---> statement-breakpoint
+
 CREATE OR REPLACE FUNCTION app_tenant_id() RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid
 $$;
---> statement-breakpoint
+
 CREATE OR REPLACE FUNCTION app_student_id() RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT NULLIF(current_setting('app.student_id', true), '')::uuid
 $$;
---> statement-breakpoint
 
 -- studio: só enxerga a si mesmo
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 CREATE POLICY isolamento ON tenants USING (id = app_tenant_id()) WITH CHECK (id = app_tenant_id());
---> statement-breakpoint
 
 -- equipe: só o próprio studio, e nunca a partir do app do aluno
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 CREATE POLICY isolamento ON staff
   USING (tenant_id = app_tenant_id() AND app_student_id() IS NULL)
   WITH CHECK (tenant_id = app_tenant_id() AND app_student_id() IS NULL);
---> statement-breakpoint
 
 -- alunos: o studio vê os seus; o aluno vê só a si mesmo
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 CREATE POLICY isolamento ON students
   USING (tenant_id = app_tenant_id() AND (app_student_id() IS NULL OR id = app_student_id()))
   WITH CHECK (tenant_id = app_tenant_id() AND (app_student_id() IS NULL OR id = app_student_id()));
---> statement-breakpoint
 
 -- biblioteca: exercícios do KFit (tenant nulo) para todos; os do studio só para ele
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 CREATE POLICY leitura ON exercises FOR SELECT USING (tenant_id IS NULL OR tenant_id = app_tenant_id());
---> statement-breakpoint
 CREATE POLICY escrita ON exercises FOR ALL
   USING (tenant_id = app_tenant_id() AND app_student_id() IS NULL)
   WITH CHECK (tenant_id = app_tenant_id() AND app_student_id() IS NULL);
---> statement-breakpoint
 
 -- tabelas com aluno: travam por studio e, no app do aluno, pelo próprio aluno
 DO $$
@@ -75,44 +65,29 @@ BEGIN
   END LOOP;
 END
 $$;
---> statement-breakpoint
 
 -- horários do studio: o aluno lê, só o personal altera
 ALTER TABLE slots ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 CREATE POLICY leitura ON slots FOR SELECT USING (tenant_id = app_tenant_id());
---> statement-breakpoint
 CREATE POLICY escrita ON slots FOR ALL
   USING (tenant_id = app_tenant_id() AND app_student_id() IS NULL)
   WITH CHECK (tenant_id = app_tenant_id() AND app_student_id() IS NULL);
---> statement-breakpoint
 
 -- tabelas técnicas: RLS ligada e NENHUMA permissão para kfit_app (só o servidor, como dono)
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 ALTER TABLE otp_codes ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
---> statement-breakpoint
 
 -- permissões do papel da aplicação
 GRANT SELECT, UPDATE ON tenants TO kfit_app;
---> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE ON staff TO kfit_app;
---> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE ON students TO kfit_app;
---> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE, DELETE ON exercises, workouts, workout_items, training_sessions, set_logs,
   item_feedback, assessments, payments, slots, bookings, coach_notes TO kfit_app;
---> statement-breakpoint
 
 -- integridade que o código não pode furar
 ALTER TABLE item_feedback ADD CONSTRAINT pse_valido CHECK (pse BETWEEN 0 AND 10);
---> statement-breakpoint
 ALTER TABLE payments ADD CONSTRAINT valor_valido CHECK (amount_cents >= 0);
---> statement-breakpoint
 ALTER TABLE students ADD CONSTRAINT vencimento_valido CHECK (due_day BETWEEN 1 AND 28);

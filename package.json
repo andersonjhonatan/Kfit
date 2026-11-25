@@ -4,20 +4,24 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3200",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
     "demo:sync": "node scripts/sync-prototipo.mjs",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
     "studio:criar": "tsx scripts/criar-studio.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:dev": "prisma migrate dev",
+    "db:senha-app": "tsx scripts/senha-kfit-app.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "6.19.3",
+    "@prisma/client": "6.19.3",
     "@sentry/nextjs": "^11.18.0",
     "bcryptjs": "^3.0.3",
-    "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.79.0",
     "motion": "14.14.0",
     "next": "15.5.29",
@@ -34,11 +38,24 @@
     "@types/react": "^19.3.1",
     "@types/react-dom": "^19.3.0",
     "dotenv": "^18.0.10",
-    "drizzle-kit": "^0.31.11",
+    "prisma": "6.19.3",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "vitest": "^5.1.2"
   },
-  "packageManager": "pnpm@10.28.0"
+  "packageManager": "pnpm@10.28.0",
+  "prisma": {
+    "seed": "tsx scripts/seed.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "sharp",
+      "@sentry/cli"
+    ]
+  }
 }

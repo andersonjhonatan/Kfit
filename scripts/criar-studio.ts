@@ -1,13 +1,10 @@
 // Cadastra um cliente novo (studio + personal dono). Uso:
 //   pnpm studio:criar --nome "VEV Funcional" --slug vev-funcional --personal "Victor Leonardo" --whatsapp 87999998888 [--plano pro] [--dias 14]
 // Mostra uma senha provisória: o personal entra com ela (e um código no WhatsApp) e depois troca em "Esqueci minha senha".
-import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Client } from 'pg';
-import * as schema from '../src/server/db/schema';
 import { ensureLibrary } from '../src/server/seed-demo';
+import { prisma as db } from './db';
 
 function arg(name: string, fallback?: string) {
   const i = process.argv.indexOf(`--${name}`);
@@ -28,9 +25,6 @@ async function main() {
   if (phone.length < 10 || phone.length > 11) throw new Error('WhatsApp com DDD, ex.: 87999998888');
   if (!['solo', 'pro', 'studio'].includes(plan)) throw new Error('plano: solo, pro ou studio');
 
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
-  await client.connect();
-  const db = drizzle(client, { schema });
   await ensureLibrary(db);
   const temp = randomBytes(6).toString('base64url').replace(/[^a-zA-Z0-9]/g, 'x') + '7k';
   const mono = name
@@ -40,15 +34,12 @@ async function main() {
     .map((p) => p[0])
     .join('')
     .toUpperCase();
-  const [t] = await db
-    .insert(schema.tenants)
-    .values({ slug, name, brandMono: mono, plan, status: 'trial', trialEndsAt: new Date(Date.now() + days * 86_400_000) })
-    .returning();
-  await db.insert(schema.staff).values({ tenantId: t.id, name: personal, phone, passwordHash: await bcrypt.hash(temp, 11) });
+  const t = await db.tenant.create({ data: { slug, name, brandMono: mono, plan, status: 'trial', trialEndsAt: new Date(Date.now() + days * 86_400_000) } });
+  await db.staff.create({ data: { tenantId: t.id, name: personal, phone, passwordHash: await bcrypt.hash(temp, 11) } });
   // horários padrão: seg a sex, 6h–9h e 16h–20h
   const times = ['06:00', '07:00', '08:00', '09:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-  await db.insert(schema.slots).values([1, 2, 3, 4, 5].flatMap((wd) => times.map((time) => ({ tenantId: t.id, weekday: wd, time }))));
-  await client.end();
+  await db.slot.createMany({ data: [1, 2, 3, 4, 5].flatMap((wd) => times.map((time) => ({ tenantId: t.id, weekday: wd, time }))) });
+  await db.$disconnect();
   console.log(`\nStudio criado: ${name}`);
   console.log(`  Link dos alunos: /a/${slug}`);
   console.log(`  Painel: /painel · WhatsApp ${phone} · senha provisória: ${temp}`);

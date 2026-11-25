@@ -1,8 +1,7 @@
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { audit } from '@/server/audit';
 import { startStudentSession } from '@/server/auth';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 import { LIMITS, limit } from '@/server/ratelimit';
 import { checkPassword, normalizePhone } from '@/server/security';
@@ -19,11 +18,7 @@ export const POST = route<{ params: Promise<{ slug: string }> }>(async (req, { p
   await limit(`login:ip:${ip}`, ...LIMITS.loginIp);
   if (!phone) throw new ApiError(400, 'Digite o número com DDD.');
   await limit(`login:student:${tn.id}:${phone}`, ...LIMITS.loginPhone);
-  const [st] = await systemDb
-    .select()
-    .from(schema.students)
-    .where(and(eq(schema.students.tenantId, tn.id), eq(schema.students.phone, phone)))
-    .limit(1);
+  const st = await systemDb.student.findUnique({ where: { tenantId_phone: { tenantId: tn.id, phone } } });
   if (!st || !st.passwordHash || st.status !== 'ativo') throw new ApiError(400, 'Telefone ou senha incorretos.');
   if (st.accessStatus === 'pausado') throw new ApiError(403, 'Seu acesso está pausado pelo personal. Fale com ele para liberar.');
   if (st.lockedUntil && st.lockedUntil > new Date()) {
@@ -32,10 +27,10 @@ export const POST = route<{ params: Promise<{ slug: string }> }>(async (req, { p
   if (!(await checkPassword(password, st.passwordHash))) {
     const fails = st.failedLogins + 1;
     const lock = fails >= 5;
-    await systemDb
-      .update(schema.students)
-      .set({ failedLogins: lock ? 0 : fails, lockedUntil: lock ? new Date(Date.now() + 15 * 60_000) : null })
-      .where(eq(schema.students.id, st.id));
+    await systemDb.student.update({
+      where: { id: st.id },
+      data: { failedLogins: lock ? 0 : fails, lockedUntil: lock ? new Date(Date.now() + 15 * 60_000) : null },
+    });
     if (lock) {
       await audit({ tenantId: tn.id, actorKind: 'student', actorId: st.id, action: 'login_aluno_travado', ip });
       throw new ApiError(423, 'Senha errada 5 vezes. Para proteger seus dados, o login ficou travado por 15 minutos.', { need: 'blocked' });

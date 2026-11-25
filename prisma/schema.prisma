@@ -1,0 +1,413 @@
+// Banco do KFit (Prisma + PostgreSQL).
+// Toda tabela de negócio tem tenant_id (o studio) e fica travada por Row Level Security
+// (ver prisma/migrations/*_seguranca). Tabelas com student_id também travam por aluno
+// quando a requisição vem do app do aluno.
+
+generator client {
+  provider   = "prisma-client-js"
+  // Cliente sem motor nativo: roda na Vercel e em qualquer lugar, conectando pelo adaptador do Postgres.
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────── studio (tenant) ─────────
+model Tenant {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String    @unique
+  name        String
+  tagline     String    @default("")
+  brandColor  String    @default("#2563EB") @map("brand_color")
+  brandMono   String    @default("KF") @map("brand_mono")
+  brandShape  String    @default("round") @map("brand_shape")
+  /// solo | pro | studio — o que o plano libera é decidido no servidor (src/server/rules.ts)
+  plan        String    @default("pro")
+  /// trial | active | past_due | blocked
+  status      String    @default("trial")
+  trialEndsAt DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  paidUntil   DateTime? @map("paid_until") @db.Timestamptz(6)
+  isDemo      Boolean   @default(false) @map("is_demo")
+  pixKey      String    @default("") @map("pix_key")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  staff            Staff[]
+  students         Student[]
+  devices          Device[]
+  sessions         Session[]
+  otpCodes         OtpCode[]
+  auditLogs        AuditLog[]
+  exercises        Exercise[]
+  workouts         Workout[]
+  workoutItems     WorkoutItem[]
+  trainingSessions TrainingSession[]
+  setLogs          SetLog[]
+  itemFeedback     ItemFeedback[]
+  assessments      Assessment[]
+  payments         Payment[]
+  slots            Slot[]
+  bookings         Booking[]
+  notes            CoachNote[]
+
+  @@map("tenants")
+}
+
+// ───────── personal (equipe do studio) ─────────
+model Staff {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  name           String
+  /// só dígitos, com DDD (ex.: 87999001234). Login do personal.
+  phone          String    @unique
+  role           String    @default("owner")
+  passwordHash   String    @map("password_hash")
+  pinHash        String?   @map("pin_hash")
+  /// minutos parado até o app pedir o PIN de novo
+  lockAfterMin   Int       @default(1) @map("lock_after_min") @db.SmallInt
+  bioEnabled     Boolean   @default(true) @map("bio_enabled")
+  alertNewDevice Boolean   @default(true) @map("alert_new_device")
+  failedLogins   Int       @default(0) @map("failed_logins") @db.SmallInt
+  lockedUntil    DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  devices  Device[]
+  sessions Session[]
+
+  @@map("staff")
+}
+
+// ───────── alunos ─────────
+model Student {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  name          String
+  phone         String
+  goal          String    @default("")
+  sex           String    @default("")
+  birth         DateTime? @db.Date
+  heightCm      Int?      @map("height_cm") @db.SmallInt
+  days          String    @default("")
+  planName      String    @default("Mensal") @map("plan_name")
+  priceCents    Int       @default(0) @map("price_cents")
+  dueDay        Int       @default(10) @map("due_day") @db.SmallInt
+  /// ativo | inativo
+  status        String    @default("ativo")
+  /// pendente (nunca entrou) | ativo | pausado (o personal bloqueou)
+  accessStatus  String    @default("pendente") @map("access_status")
+  passwordHash  String?   @map("password_hash")
+  passwordSetAt DateTime? @map("password_set_at") @db.Timestamptz(6)
+  failedLogins  Int       @default(0) @map("failed_logins") @db.SmallInt
+  lockedUntil   DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastAccessAt  DateTime? @map("last_access_at") @db.Timestamptz(6)
+  water         Int       @default(0) @db.SmallInt
+  waterDay      DateTime? @map("water_day") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions         Session[]
+  workouts         Workout[]
+  workoutItems     WorkoutItem[]
+  trainingSessions TrainingSession[]
+  setLogs          SetLog[]
+  itemFeedback     ItemFeedback[]
+  assessments      Assessment[]
+  payments         Payment[]
+  bookings         Booking[]
+  notes            CoachNote[]
+
+  @@unique([tenantId, phone], map: "students_tenant_phone")
+  @@map("students")
+}
+
+// ───────── sessões, aparelhos, códigos (só o servidor mexe) ─────────
+model Device {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  staffId    String   @map("staff_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  label      String   @default("")
+  lastIp     String   @default("") @map("last_ip")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff    Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@map("devices")
+}
+
+model Session {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  /// staff | student
+  kind       String
+  staffId    String?   @map("staff_id") @db.Uuid
+  studentId  String?   @map("student_id") @db.Uuid
+  deviceId   String?   @map("device_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  /// quando o PIN foi confirmado (personal). null = precisa do PIN
+  pinOkAt    DateTime? @map("pin_ok_at") @db.Timestamptz(6)
+  pinFails   Int       @default(0) @map("pin_fails") @db.SmallInt
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff   Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  device  Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([studentId])
+  @@map("sessions")
+}
+
+model OtpCode {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  /// staff | student
+  subject    String
+  subjectId  String    @map("subject_id") @db.Uuid
+  /// first | reset | device
+  purpose    String
+  codeHash   String    @map("code_hash")
+  attempts   Int       @default(0) @db.SmallInt
+  /// depois de acertar o código, vira um "ticket" de uso único para o próximo passo
+  ticketHash String?   @map("ticket_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, purpose])
+  @@map("otp_codes")
+}
+
+model RateLimit {
+  key         String   @id
+  windowStart DateTime @map("window_start") @db.Timestamptz(6)
+  count       Int
+
+  @@map("rate_limits")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  actorKind String   @map("actor_kind")
+  actorId   String?  @map("actor_id") @db.Uuid
+  action    String
+  meta      Json     @default("{}")
+  ip        String   @default("")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+// ───────── treino ─────────
+/// Biblioteca: tenant_id nulo = exercício do KFit, visível para todos os studios.
+model Exercise {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  name      String
+  muscle    String
+  videoUrl  String   @default("") @map("video_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  WorkoutItem[]
+
+  @@map("exercises")
+}
+
+model Workout {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  name      String
+  position  Int      @default(0) @db.SmallInt
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student  Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items    WorkoutItem[]
+  sessions TrainingSession[]
+
+  @@index([studentId])
+  @@map("workouts")
+}
+
+model WorkoutItem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  workoutId  String   @map("workout_id") @db.Uuid
+  exerciseId String   @map("exercise_id") @db.Uuid
+  position   Int      @default(0) @db.SmallInt
+  sets       Int      @default(3) @db.SmallInt
+  reps       String   @default("10")
+  targetKg   Decimal? @map("target_kg") @db.Decimal(6, 1)
+  restSec    Int      @default(60) @map("rest_sec") @db.SmallInt
+  notes      String   @default("")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  workout  Workout        @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise Exercise       @relation(fields: [exerciseId], references: [id])
+  setLogs  SetLog[]
+  feedback ItemFeedback[]
+
+  @@map("workout_items")
+}
+
+model TrainingSession {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  studentId  String    @map("student_id") @db.Uuid
+  workoutId  String    @map("workout_id") @db.Uuid
+  day        DateTime  @db.Date
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  workout  Workout        @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  setLogs  SetLog[]
+  feedback ItemFeedback[]
+
+  @@unique([studentId, workoutId, day], map: "training_once_per_day")
+  @@map("training_sessions")
+}
+
+model SetLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  itemId    String   @map("item_id") @db.Uuid
+  setNo     Int      @map("set_no") @db.SmallInt
+  kg        Decimal? @db.Decimal(6, 1)
+  reps      Int?     @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  item    WorkoutItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, itemId, setNo], map: "set_once")
+  @@map("set_logs")
+}
+
+/// Como foi o exercício: o aluno escolhe uma palavra, o personal vê o PSE (escala de Borg CR-10).
+model ItemFeedback {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  itemId    String   @map("item_id") @db.Uuid
+  pse       Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  item    WorkoutItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, itemId], map: "feedback_once")
+  @@map("item_feedback")
+}
+
+// ───────── avaliação, financeiro, agenda, recados ─────────
+model Assessment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  day        DateTime @db.Date
+  weightKg   Decimal  @map("weight_kg") @db.Decimal(5, 1)
+  heightCm   Int?     @map("height_cm") @db.SmallInt
+  bodyFatPct Decimal? @map("body_fat_pct") @db.Decimal(4, 1)
+  /// perímetros em cm: { cintura, quadril, braco, coxa, ... }
+  measures   Json     @default("{}")
+  notes      String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("assessments")
+}
+
+model Payment {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  /// mês de referência, ex.: 2026-11
+  period      String
+  dueDate     DateTime  @map("due_date") @db.Date
+  amountCents Int       @map("amount_cents")
+  /// aberto | pago
+  status      String    @default("aberto")
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, period], map: "payment_once")
+  @@map("payments")
+}
+
+model Slot {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  /// 0 = domingo … 6 = sábado
+  weekday  Int    @db.SmallInt
+  time     String
+  capacity Int    @default(1) @db.SmallInt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("slots")
+}
+
+model Booking {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  day       DateTime @db.Date
+  time      String
+  /// pedido | confirmado | cancelado
+  status    String   @default("pedido")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, day])
+  @@map("bookings")
+}
+
+model CoachNote {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  text      String
+  reaction  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("coach_notes")
+}

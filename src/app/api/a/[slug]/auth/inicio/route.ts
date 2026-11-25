@@ -1,7 +1,6 @@
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { sendOtp } from '@/server/auth';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 import { ApiError, body, ipOf, ok, route } from '@/server/http';
 import { LIMITS, limit } from '@/server/ratelimit';
 import { normalizePhone } from '@/server/security';
@@ -16,11 +15,7 @@ export const POST = route<{ params: Promise<{ slug: string }> }>(async (req, { p
   const ip = ipOf(req);
   await limit(`login:ip:${ip}`, ...LIMITS.loginIp);
   if (!phone) throw new ApiError(400, 'Digite o número com DDD.');
-  const [st] = await systemDb
-    .select()
-    .from(schema.students)
-    .where(and(eq(schema.students.tenantId, tn.id), eq(schema.students.phone, phone)))
-    .limit(1);
+  const st = await systemDb.student.findUnique({ where: { tenantId_phone: { tenantId: tn.id, phone } } });
   if (!st || st.status !== 'ativo') throw new ApiError(404, 'Esse número não está cadastrado. Só entra no app quem o personal cadastrou. Fale com ele.');
   if (st.accessStatus === 'pausado') throw new ApiError(403, 'Seu acesso está pausado pelo personal. Fale com ele para liberar.');
   if (!st.passwordHash) {

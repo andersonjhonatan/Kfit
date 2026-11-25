@@ -2,10 +2,9 @@
  * Passos 2 e 4 testados de ponta a ponta contra o servidor rodando (KFIT_URL, ex.: http://localhost:3200).
  * pnpm db:seed && KFIT_URL=http://localhost:3200 pnpm test
  */
-import { eq, like } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { schema, systemDb } from '@/server/db';
+import { systemDb } from '@/server/db';
 
 const BASE = process.env.KFIT_URL;
 const d = BASE ? describe : describe.skip;
@@ -42,14 +41,14 @@ async function staffLogin(c: Client, phone: string, password: string, pin = '482
 let otherTenant: string;
 d('servidor', () => {
   beforeAll(async () => {
-    await systemDb.delete(schema.tenants).where(like(schema.tenants.slug, 'e2e-%'));
-    await systemDb.delete(schema.rateLimits);
-    const [t] = await systemDb.insert(schema.tenants).values({ slug: 'e2e-outro', name: 'Outro Studio', plan: 'solo', status: 'trial', trialEndsAt: new Date(Date.now() + 86400000), isDemo: true }).returning();
+    await systemDb.tenant.deleteMany({ where: { slug: { startsWith: 'e2e-' } } });
+    await systemDb.rateLimit.deleteMany();
+    const t = await systemDb.tenant.create({ data: { slug: 'e2e-outro', name: 'Outro Studio', plan: 'solo', status: 'trial', trialEndsAt: new Date(Date.now() + 86400000), isDemo: true } });
     otherTenant = t.id;
-    await systemDb.insert(schema.staff).values({ tenantId: t.id, name: 'Outro Personal', phone: '87911112222', passwordHash: await bcrypt.hash('outro123', 11) });
+    await systemDb.staff.create({ data: { tenantId: t.id, name: 'Outro Personal', phone: '87911112222', passwordHash: await bcrypt.hash('outro123', 11) } });
   });
   afterAll(async () => {
-    await systemDb.delete(schema.tenants).where(like(schema.tenants.slug, 'e2e-%'));
+    await systemDb.tenant.deleteMany({ where: { slug: { startsWith: 'e2e-' } } });
   });
 
   it('personal: senha → código → PIN → painel', async () => {
@@ -92,11 +91,11 @@ d('servidor', () => {
     const outro = new Client();
     await staffLogin(outro, '87911112222', 'outro123');
     expect((await outro.call('POST', '/api/p/ia', { message: 'oi' })).status).toBe(403);
-    await systemDb.update(schema.tenants).set({ isDemo: false, trialEndsAt: new Date(Date.now() - 1000) }).where(eq(schema.tenants.id, otherTenant));
+    await systemDb.tenant.update({ where: { id: otherTenant }, data: { isDemo: false, trialEndsAt: new Date(Date.now() - 1000) } });
     const r = await outro.call('POST', '/api/p/alunos', { name: 'Fulano de Tal', phone: '87988887777' });
     expect(r.status).toBe(402);
     expect((await outro.call('GET', '/api/p/alunos')).status).toBe(200); // ainda consulta
-    await systemDb.update(schema.tenants).set({ isDemo: true, trialEndsAt: new Date(Date.now() + 86400000) }).where(eq(schema.tenants.id, otherTenant));
+    await systemDb.tenant.update({ where: { id: otherTenant }, data: { isDemo: true, trialEndsAt: new Date(Date.now() + 86400000) } });
   });
 
   it('limite de uso: muitas tentativas de login no mesmo número → 429', async () => {

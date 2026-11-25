@@ -1,6 +1,4 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema } from '@/server/db';
 import { staffWrite } from '@/server/guard';
 import { ApiError, body, ok, route } from '@/server/http';
 
@@ -18,16 +16,15 @@ export const PATCH = route<P>(async (req, { params }) => {
   const id = z.uuid().parse((await params).id);
   const { db } = await staffWrite(req);
   const v = await body(req, Patch);
-  const set = { ...v, targetKg: v.targetKg === undefined ? undefined : v.targetKg === null ? null : String(v.targetKg) };
-  const [it] = await db((tx) => tx.update(schema.workoutItems).set(set).where(eq(schema.workoutItems.id, id)).returning());
-  if (!it) throw new ApiError(404, 'Exercício não encontrado.');
+  const r = await db((tx) => tx.workoutItem.updateMany({ where: { id }, data: v }));
+  if (!r.count) throw new ApiError(404, 'Exercício não encontrado.');
   return ok();
 });
 
 export const DELETE = route<P>(async (req, { params }) => {
   const id = z.uuid().parse((await params).id);
   const { db } = await staffWrite(req);
-  const [it] = await db((tx) => tx.delete(schema.workoutItems).where(eq(schema.workoutItems.id, id)).returning());
-  if (!it) throw new ApiError(404, 'Exercício não encontrado.');
+  const r = await db((tx) => tx.workoutItem.deleteMany({ where: { id } }));
+  if (!r.count) throw new ApiError(404, 'Exercício não encontrado.');
   return ok();
 });

@@ -1,10 +1,8 @@
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { schema } from '@/server/db';
+import { revokeStudentSessions } from '@/server/auth';
 import { staffRead, staffWrite } from '@/server/guard';
 import { ApiError, body, ok, route } from '@/server/http';
 import { studentDetail } from '@/server/queries';
-import { revokeStudentSessions } from '@/server/auth';
 
 type P = { params: Promise<{ id: string }> };
 const uuid = z.uuid('Aluno inválido.');
@@ -32,8 +30,9 @@ export const PATCH = route<P>(async (req, { params }) => {
   const id = uuid.parse((await params).id);
   const { db } = await staffWrite(req);
   const v = await body(req, Patch);
-  const [s] = await db((tx) => tx.update(schema.students).set(v).where(eq(schema.students.id, id)).returning({ id: schema.students.id }));
-  if (!s) throw new ApiError(404, 'Aluno não encontrado.');
+  // updateMany: se o aluno é de outro studio, a trava do banco esconde a linha e nada muda
+  const r = await db((tx) => tx.student.updateMany({ where: { id }, data: v }));
+  if (!r.count) throw new ApiError(404, 'Aluno não encontrado.');
   if (v.status === 'inativo') await revokeStudentSessions(id);
   return ok();
 });
